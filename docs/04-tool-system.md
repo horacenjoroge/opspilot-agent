@@ -43,6 +43,29 @@ run(input) -> ToolResult
 - Every tool returns a serializable `ToolResult`.
 - Failures should return structured errors instead of throwing raw infrastructure details into the agent loop.
 
+## Tool Allowlist
+
+The registry is the backend control point for tool safety.
+
+- only registered tools may execute
+- unknown tool names are rejected before execution
+- the model does not get arbitrary code execution
+- route handlers never call tools directly without going through the registry
+
+Current status:
+
+- Implemented: base tool interface, registry, allowlisted tools, unknown-tool rejection
+
+## Tool Risk Levels
+
+Each tool or action carries a backend-owned risk classification:
+
+- `safe`: read-only evidence gathering and low-risk notifications
+- `medium`: bounded operational changes that may still require approval
+- `dangerous`: actions that can affect live traffic and always require approval
+
+The model can recommend actions, but it cannot assign or override their risk.
+
 ## Risk Levels
 
 - `safe`: read-only tools and low-risk notifications
@@ -52,3 +75,29 @@ run(input) -> ToolResult
 ## Unknown Tools
 
 If Qwen recommends a tool that is not registered, the backend must reject it, persist the rejection, and continue safely rather than improvising a new capability.
+
+## Tool Error Handling
+
+Tool execution is standardized:
+
+- input payloads are validated before `run`
+- expected failures return structured `ToolError`
+- the agent stores the failed result instead of crashing
+- remediation actions that require approval return an explicit approval-needed error until approved
+
+## Evidence Storage In AgentStep
+
+Tool evidence is stored as part of the incident timeline:
+
+- `step_number`
+- `type`
+- `tool_name`
+- `input_json`
+- `output_json`
+- `model_summary`
+- `status`
+
+Current honesty note:
+
+- Implemented: tool outputs and failures are persisted in `AgentStep`
+- To Implement: richer step fields such as `title`, normalized `summary`, and raw `model_json` for every model decision

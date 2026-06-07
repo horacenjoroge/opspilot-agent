@@ -1054,6 +1054,7 @@ Acceptance criteria:
 
 - [x] Evaluation cases are runnable.
 - [x] Results documented in `docs/06-testing.md`.
+- [x] Visible evaluation runner available in dashboard or API.
 
 ---
 
@@ -1208,7 +1209,7 @@ Acceptance criteria:
 - [x] AgentStep
 - [x] ApprovalRequest
 - [x] AuditLog
-- [ ] IncidentMemory optional
+- [x] IncidentMemory optional
 
 ### LLM
 
