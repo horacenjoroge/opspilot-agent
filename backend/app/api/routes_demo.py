@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db_session
+from app.schemas.common import ErrorResponse
 from app.schemas.incident import IncidentRead
 from app.services.demo import DemoScenarioNotFoundError, DemoService
 from app.services.incidents import IncidentService
@@ -10,7 +11,14 @@ from app.services.incidents import IncidentService
 router = APIRouter(prefix="/api/demo", tags=["demo"])
 
 
-@router.post("/incidents/{scenario_name}", response_model=IncidentRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/incidents/{scenario_name}",
+    response_model=IncidentRead,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create seeded demo incident",
+    description="Create a deterministic demo incident for a supported scenario such as high API error rate or queue backlog.",
+    responses={404: {"model": ErrorResponse, "description": "Scenario name was not recognized."}},
+)
 async def create_demo_incident(scenario_name: str, db: Session = Depends(get_db_session)) -> IncidentRead:
     try:
         incident = DemoService(IncidentService(db)).create_demo_incident(scenario_name)
