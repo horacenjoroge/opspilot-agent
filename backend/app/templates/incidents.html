@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}OpsPilot Incidents{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">Incident API</p>
+      <h2>Incident List</h2>
+    </div>
+    <a class="button secondary" href="/demo">Create demo incident</a>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Title</th>
+          <th>Status</th>
+          <th>Severity</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for incident in incidents %}
+        <tr>
+          <td>#{{ incident.id }}</td>
+          <td><a href="/incidents/{{ incident.id }}">{{ incident.title }}</a></td>
+          <td>{{ incident.status.value }}</td>
+          <td><span class="badge">{{ incident.severity.value }}</span></td>
+          <td>
+            <div class="action-row">
+              <a class="button ghost small" href="/incidents/{{ incident.id }}">View</a>
+              <button class="button primary small" data-run-agent="{{ incident.id }}">Run Agent</button>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5">No incidents available yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

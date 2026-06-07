@@ -1,0 +1,42 @@
+EVAL_CASES = [
+    {
+        "scenario": "high_api_error_rate",
+        "input_alert": "Production alert: API error rate is spiking with 5xx responses and connection exhaustion signs.",
+        "expected_severity": "high",
+        "expected_tools": ["logs_tool", "metrics_tool", "health_tool", "deployment_tool", "runbook_tool"],
+        "expected_requires_approval": True,
+        "expected_diagnosis_keywords": ["database", "connection", "exhaustion"],
+    },
+    {
+        "scenario": "queue_backlog",
+        "input_alert": "Workers are falling behind and the queue backlog is growing rapidly.",
+        "expected_severity": "high",
+        "expected_tools": ["metrics_tool", "health_tool", "runbook_tool"],
+        "expected_requires_approval": True,
+        "expected_diagnosis_keywords": ["queue", "workers", "saturated"],
+    },
+    {
+        "scenario": "database_latency",
+        "input_alert": "Database latency spike is affecting checkout traffic.",
+        "expected_severity": "high",
+        "expected_tools": ["metrics_tool", "logs_tool", "runbook_tool"],
+        "expected_requires_approval": False,
+        "expected_diagnosis_keywords": ["database", "latency", "slow"],
+    },
+    {
+        "scenario": "ambiguous_alert",
+        "input_alert": "Ambiguous alert with weak signals across services.",
+        "expected_severity": "medium",
+        "expected_tools": ["logs_tool", "metrics_tool", "health_tool", "runbook_tool"],
+        "expected_requires_approval": False,
+        "expected_diagnosis_keywords": ["ambiguous", "inconclusive", "investigation"],
+    },
+    {
+        "scenario": "tool_failure",
+        "input_alert": "Tool failure occurred during incident investigation while the log index was unavailable.",
+        "expected_severity": "medium",
+        "expected_tools": ["logs_tool", "health_tool"],
+        "expected_requires_approval": False,
+        "expected_diagnosis_keywords": ["incomplete", "failed", "fallback"],
+    },
+]

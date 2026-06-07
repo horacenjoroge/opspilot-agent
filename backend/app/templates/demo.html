@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}OpsPilot Demo{% endblock %}
+{% block content %}
+<section class="hero compact">
+  <div>
+    <p class="eyebrow">Deterministic Demo</p>
+    <h2>Launch a scenario</h2>
+    <p class="lede">Create a seeded incident, open it, and run the agent without touching Postman.</p>
+  </div>
+</section>
+
+<section class="card-grid">
+  {% for scenario in scenarios %}
+  <article class="scenario-card">
+    <h3>{{ scenario.replace("_", " ").title() }}</h3>
+    <p>Seeded evidence and deterministic mock-provider flow for the {{ scenario }} scenario.</p>
+    <button class="button primary" data-demo-scenario="{{ scenario }}">Create demo incident</button>
+  </article>
+  {% endfor %}
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <h3>Recent Demo Incidents</h3>
+    <a href="/incidents">See all incidents</a>
+  </div>
+  <div class="stack">
+    {% for incident in recent_demo_incidents %}
+    <article class="approval-card">
+      <div>
+        <strong>{{ incident.title }}</strong>
+        <p>{{ incident.source }}</p>
+      </div>
+      <div class="action-row">
+        <a class="button ghost small" href="/incidents/{{ incident.id }}">Open</a>
+        <button class="button primary small" data-run-agent="{{ incident.id }}">Run Agent</button>
+      </div>
+    </article>
+    {% else %}
+    <p>No demo incidents created yet.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

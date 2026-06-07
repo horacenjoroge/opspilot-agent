@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}OpsPilot Overview{% endblock %}
+{% block content %}
+<section class="hero">
+  <div>
+    <p class="eyebrow">Autopilot Agent</p>
+    <h2>Backend-first incident response</h2>
+    <p class="lede">Run demo alerts, inspect agent decisions, and approve risky remediations without leaving the browser.</p>
+  </div>
+  <a class="button primary" href="/demo">Launch Demo Scenario</a>
+</section>
+
+<section class="stats-grid">
+  <article class="stat-card">
+    <span>Total Incidents</span>
+    <strong>{{ counts.incidents }}</strong>
+  </article>
+  <article class="stat-card">
+    <span>Active Incidents</span>
+    <strong>{{ counts.active_incidents }}</strong>
+  </article>
+  <article class="stat-card">
+    <span>Pending Approvals</span>
+    <strong>{{ counts.pending_approvals }}</strong>
+  </article>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <h3>Recent Incidents</h3>
+    <a href="/incidents">View all</a>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Severity</th>
+          <th>Status</th>
+          <th>Source</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for incident in recent_incidents %}
+        <tr>
+          <td><a href="/incidents/{{ incident.id }}">{{ incident.title }}</a></td>
+          <td><span class="badge">{{ incident.severity.value }}</span></td>
+          <td>{{ incident.status.value }}</td>
+          <td>{{ incident.source }}</td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="4">No incidents yet. Start with a demo scenario.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

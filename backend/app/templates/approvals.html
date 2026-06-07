@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}OpsPilot Approvals{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="panel-header">
+    <div>
+      <p class="eyebrow">Human In The Loop</p>
+      <h2>Approval Queue</h2>
+    </div>
+  </div>
+  <div class="stack">
+    {% for approval in approvals %}
+    <article class="approval-card wide">
+      <div>
+        <div class="approval-head">
+          <strong>{{ approval.action_name }}</strong>
+          <span class="badge">{{ approval.risk_level.value }}</span>
+          <span class="badge neutral">{{ approval.status.value }}</span>
+        </div>
+        <p>{{ approval.reason }}</p>
+        <p><strong>Expected impact:</strong> {{ approval.expected_impact }}</p>
+        <p><strong>Rollback:</strong> {{ approval.rollback_plan }}</p>
+      </div>
+      <div class="action-row">
+        <button class="button primary small" data-approve-id="{{ approval.id }}">Approve</button>
+        <button class="button danger small" data-reject-id="{{ approval.id }}">Reject</button>
+        <a class="button ghost small" href="/incidents/{{ approval.incident_id }}">View incident</a>
+      </div>
+    </article>
+    {% else %}
+    <p>No approval requests are waiting right now.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

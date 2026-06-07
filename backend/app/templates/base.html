@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}OpsPilot{% endblock %}</title>
+    <link rel="stylesheet" href="/static/dashboard.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <p class="eyebrow">Track 4</p>
+          <h1>OpsPilot</h1>
+          <p class="tagline">Incident triage with safe remediation and visible evidence.</p>
+        </div>
+        <nav class="nav">
+          <a href="/" class="nav-link">Overview</a>
+          <a href="/incidents" class="nav-link">Incidents</a>
+          <a href="/approvals" class="nav-link">Approvals</a>
+          <a href="/demo" class="nav-link">Demo</a>
+        </nav>
+      </aside>
+      <main class="content">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+    <script src="/static/dashboard.js"></script>
+  </body>
+</html>

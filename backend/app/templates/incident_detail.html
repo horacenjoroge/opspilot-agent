@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Incident {{ incident.id }}{% endblock %}
+{% block content %}
+<section class="hero compact">
+  <div>
+    <p class="eyebrow">Incident #{{ incident.id }}</p>
+    <h2>{{ incident.title }}</h2>
+    <p class="lede">{{ incident.description }}</p>
+  </div>
+  <div class="hero-actions">
+    <span class="badge">{{ incident.severity.value }}</span>
+    <span class="badge neutral">{{ incident.status.value }}</span>
+    <button class="button primary" data-run-agent="{{ incident.id }}">Run Agent</button>
+  </div>
+</section>
+
+<section class="detail-grid">
+  <article class="panel">
+    <h3>Diagnosis</h3>
+    <p>{{ incident.root_cause_summary or "No diagnosis recorded yet." }}</p>
+  </article>
+  <article class="panel">
+    <h3>Recommended Action</h3>
+    <p>{{ incident.recommended_action or "No recommended action yet." }}</p>
+  </article>
+</section>
+
+<section class="panel">
+  <h3>Final Report</h3>
+  <p>{{ incident.final_report or "The final report will appear here once the incident is resolved." }}</p>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <h3>Approvals</h3>
+    <a href="/approvals">Open approvals board</a>
+  </div>
+  <div class="stack">
+    {% for approval in approvals %}
+    <article class="approval-card">
+      <div>
+        <strong>{{ approval.action_name }}</strong>
+        <p>{{ approval.reason }}</p>
+      </div>
+      <div class="approval-meta">
+        <span class="badge">{{ approval.risk_level.value }}</span>
+        <span class="badge neutral">{{ approval.status.value }}</span>
+      </div>
+    </article>
+    {% else %}
+    <p>No approval requests for this incident yet.</p>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <h3>Timeline</h3>
+  <div class="timeline">
+    {% for item in timeline %}
+    <article class="timeline-item">
+      <div class="timeline-dot"></div>
+      <div class="timeline-body">
+        <div class="timeline-head">
+          <strong>{{ item.label }}</strong>
+          <span>{{ item.occurred_at }}</span>
+        </div>
+        <p class="timeline-meta">{{ item.category }} • {{ item.status }}</p>
+        <pre>{{ item.details | tojson(indent=2) }}</pre>
+      </div>
+    </article>
+    {% else %}
+    <p>No timeline entries yet.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
