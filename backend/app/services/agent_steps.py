@@ -44,3 +44,6 @@ class AgentStepService:
             .order_by(AgentStep.step_number.asc(), AgentStep.id.asc())
             .all()
         )
+
+    def next_step_number(self, incident_id: int) -> int:
+        return len(self.list_for_incident(incident_id)) + 1

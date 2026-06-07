@@ -5,9 +5,12 @@ from sqlalchemy.orm import Session
 from app.agents.policies import evaluate_action_policy
 from app.core.config import get_settings
 from app.models.approval import ApprovalRequest
+from app.schemas.agent_step import AgentStepCreate
 from app.schemas.approval import ApprovalRequestCreate
-from app.schemas.enums import ApprovalStatus, IncidentStatus
+from app.schemas.enums import ApprovalStatus, IncidentStatus, ToolStatus
+from app.services.agent_steps import AgentStepService
 from app.services.audit import AuditService
+from app.services.incident_memory import IncidentMemoryService
 from app.services.incidents import IncidentService
 
 
@@ -19,7 +22,9 @@ class ApprovalService:
     def __init__(self, db: Session) -> None:
         self.db = db
         self.audit_service = AuditService(db)
+        self.agent_step_service = AgentStepService(db)
         self.incident_service = IncidentService(db)
+        self.memory_service = IncidentMemoryService(db)
 
     def create_request(self, payload: ApprovalRequestCreate) -> ApprovalRequest:
         approval_request = ApprovalRequest(
@@ -38,6 +43,23 @@ class ApprovalService:
                 "action_name": approval_request.action_name,
                 "risk_level": approval_request.risk_level.value,
             },
+        )
+        self.agent_step_service.create_step(
+            AgentStepCreate(
+                incident_id=approval_request.incident_id,
+                step_number=self.agent_step_service.next_step_number(approval_request.incident_id),
+                type="approval_request_created",
+                output_json={
+                    "approval_request_id": approval_request.id,
+                    "action_name": approval_request.action_name,
+                    "risk_level": approval_request.risk_level.value,
+                    "reason": approval_request.reason,
+                    "expected_impact": approval_request.expected_impact,
+                    "rollback_plan": approval_request.rollback_plan,
+                },
+                model_summary=f"Approval required for action '{approval_request.action_name}'.",
+                status=ToolStatus.success,
+            )
         )
         self.db.commit()
         self.db.refresh(approval_request)
@@ -94,6 +116,20 @@ class ApprovalService:
             target_id=str(approval_request.id),
             metadata_json={"incident_id": approval_request.incident_id},
         )
+        self.agent_step_service.create_step(
+            AgentStepCreate(
+                incident_id=approval_request.incident_id,
+                step_number=self.agent_step_service.next_step_number(approval_request.incident_id),
+                type="approval_decision",
+                output_json={
+                    "approval_request_id": approval_request.id,
+                    "decision": ApprovalStatus.approved.value,
+                    "approved_by": approved_by,
+                },
+                model_summary=f"Approval request {approval_request.id} approved by {approved_by}.",
+                status=ToolStatus.success,
+            )
+        )
         self._execute_pending_action(approval_request, approved_by)
         self.db.commit()
         self.db.refresh(approval_request)
@@ -111,6 +147,20 @@ class ApprovalService:
             target_type="approval_request",
             target_id=str(approval_request.id),
             metadata_json={"incident_id": approval_request.incident_id},
+        )
+        self.agent_step_service.create_step(
+            AgentStepCreate(
+                incident_id=approval_request.incident_id,
+                step_number=self.agent_step_service.next_step_number(approval_request.incident_id),
+                type="approval_decision",
+                output_json={
+                    "approval_request_id": approval_request.id,
+                    "decision": ApprovalStatus.rejected.value,
+                    "approved_by": approved_by,
+                },
+                model_summary=f"Approval request {approval_request.id} rejected by {approved_by}.",
+                status=ToolStatus.success,
+            )
         )
         self.db.commit()
         self.db.refresh(approval_request)
@@ -132,8 +182,41 @@ class ApprovalService:
             },
         )
         action_name = approval_request.action_payload_json.get("action_name", approval_request.action_name)
+        self.agent_step_service.create_step(
+            AgentStepCreate(
+                incident_id=approval_request.incident_id,
+                step_number=self.agent_step_service.next_step_number(approval_request.incident_id),
+                type="remediation_execution",
+                tool_name="remediation_tool",
+                input_json=approval_request.action_payload_json,
+                output_json={
+                    "action_name": action_name,
+                    "approved_by": approved_by,
+                    "approval_request_id": approval_request.id,
+                    "result": "approved_remediation_executed",
+                },
+                model_summary=f"Approved remediation '{action_name}' executed by {approved_by}.",
+                status=ToolStatus.success,
+            )
+        )
         self.incident_service.update_incident_fields(
             approval_request.incident_id,
             status=IncidentStatus.resolved,
             final_report=f"Approved remediation '{action_name}' executed by {approved_by}. Incident resolved.",
         )
+        self.agent_step_service.create_step(
+            AgentStepCreate(
+                incident_id=approval_request.incident_id,
+                step_number=self.agent_step_service.next_step_number(approval_request.incident_id),
+                type="final_report",
+                output_json={
+                    "summary": f"Approved remediation '{action_name}' executed by {approved_by}. Incident resolved.",
+                    "incident_status": IncidentStatus.resolved.value,
+                    "actions_taken": [action_name],
+                    "follow_up_items": ["Review the remediation outcome and update the runbook if needed."],
+                },
+                model_summary=f"Approved remediation '{action_name}' executed by {approved_by}. Incident resolved.",
+                status=ToolStatus.success,
+            )
+        )
+        self.memory_service.create_or_update_from_incident(approval_request.incident_id, successful_fix=action_name)
