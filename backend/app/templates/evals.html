@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Evaluations{% endblock %}
+{% block content %}
+<section class="hero compact">
+  <div>
+    <p class="eyebrow">Evaluation</p>
+    <h2>Scenario Runner</h2>
+    <p class="lede">Run deterministic incident scenarios through the real backend workflow and inspect PASS or FAIL results without opening pytest.</p>
+  </div>
+  <div class="hero-actions">
+    <button class="button primary" data-run-evals="all">Run All Scenarios</button>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <h3>Available Scenarios</h3>
+    <span class="badge neutral">{{ cases | length }} total</span>
+  </div>
+  <div class="card-grid">
+    {% for scenario in cases %}
+    <article class="scenario-card">
+      <p class="eyebrow">Scenario</p>
+      <h3>{{ scenario }}</h3>
+      <div class="action-row">
+        <button class="button secondary small" data-run-evals="{{ scenario }}">Run Scenario</button>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <h3>Latest Results</h3>
+    <span id="eval-summary" class="badge neutral">No run yet</span>
+  </div>
+  <div id="eval-results" class="stack">
+    <p>Run the evaluation suite to see PASS or FAIL results for each scenario.</p>
+  </div>
+</section>
+{% endblock %}

@@ -26,6 +26,27 @@
 </section>
 
 <section class="panel">
+  <h3>Similar Incident Memory</h3>
+  <div class="stack">
+    {% for memory in used_memories %}
+    <article class="approval-card">
+      <div>
+        <strong>{{ memory.incident_type }}</strong>
+        <p>{{ memory.root_cause }}</p>
+        <p><strong>Successful fix:</strong> {{ memory.successful_fix or "Not recorded" }}</p>
+      </div>
+      <div class="approval-meta">
+        <span class="badge">{{ memory.confidence }}</span>
+        <span class="badge neutral">incident #{{ memory.incident_id }}</span>
+      </div>
+    </article>
+    {% else %}
+    <p>No similar incident memory has been used for this incident yet.</p>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel">
   <h3>Final Report</h3>
   <p>{{ incident.final_report or "The final report will appear here once the incident is resolved." }}</p>
 </section>

@@ -4,8 +4,11 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.api.dependencies import get_db_session
+from app.evals.cases import EVAL_CASES
 from app.schemas.enums import ApprovalStatus, IncidentStatus
 from app.services.approvals import ApprovalService
+from app.services.evaluations import EvaluationService
+from app.services.incident_memory import IncidentMemoryService
 from app.services.incidents import IncidentNotFoundError, IncidentService
 from app.services.timeline import TimelineService
 from app.ui import TEMPLATES_DIR
@@ -54,6 +57,7 @@ async def dashboard_incident_detail(
 
     approvals = [item for item in ApprovalService(db).list_requests() if item.incident_id == incident_id]
     timeline = TimelineService(db).build_incident_timeline(incident_id)
+    used_memories = IncidentMemoryService(db).list_used_for_incident(incident_id)
     return templates.TemplateResponse(
         request,
         "incident_detail.html",
@@ -61,6 +65,7 @@ async def dashboard_incident_detail(
             "incident": incident,
             "approvals": approvals,
             "timeline": timeline,
+            "used_memories": used_memories,
         },
     )
 
@@ -87,5 +92,17 @@ async def dashboard_demo(request: Request, db: Session = Depends(get_db_session)
         {
             "scenarios": scenarios,
             "recent_demo_incidents": [incident for incident in incidents if incident.source.startswith("demo:")][:8],
+        },
+    )
+
+
+@router.get("/evals", response_class=HTMLResponse)
+async def dashboard_evaluations(request: Request, db: Session = Depends(get_db_session)) -> HTMLResponse:
+    cases = [case["scenario"] for case in EVAL_CASES]
+    return templates.TemplateResponse(
+        request,
+        "evals.html",
+        {
+            "cases": cases,
         },
     )

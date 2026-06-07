@@ -20,6 +20,50 @@ async function postEmpty(url) {
   return response.json();
 }
 
+function renderEvaluationSummary(summary) {
+  const summaryNode = document.getElementById("eval-summary");
+  if (!summaryNode) {
+    return;
+  }
+  summaryNode.textContent = `${summary.passed}/${summary.total} passed`;
+  summaryNode.className = `badge ${summary.failed === 0 ? "" : "neutral"}`.trim();
+}
+
+function renderEvaluationResults(results) {
+  const resultsNode = document.getElementById("eval-results");
+  if (!resultsNode) {
+    return;
+  }
+
+  resultsNode.innerHTML = "";
+  for (const result of results) {
+    const article = document.createElement("article");
+    article.className = "eval-card";
+
+    const checks = Object.entries(result.checks)
+      .map(([name, passed]) => `<span class="badge ${passed ? "" : "neutral"}">${name}: ${passed ? "PASS" : "FAIL"}</span>`)
+      .join("");
+
+    article.innerHTML = `
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Scenario</p>
+          <h3>${result.scenario}</h3>
+        </div>
+        <span class="badge ${result.passed ? "" : "neutral"}">${result.passed ? "PASS" : "FAIL"}</span>
+      </div>
+      <p><strong>Incident:</strong> <a href="/incidents/${result.incident_id}">#${result.incident_id}</a></p>
+      <p><strong>Severity:</strong> expected ${result.expected.expected_severity}, actual ${result.actual_severity}</p>
+      <p><strong>Tools:</strong> expected ${result.expected.expected_tools.join(", ")}, actual ${result.actual_tools.join(", ")}</p>
+      <p><strong>Approval:</strong> expected ${result.expected.expected_requires_approval}, actual ${result.actual_requires_approval}</p>
+      <p><strong>Final status:</strong> expected ${result.expected.expected_final_status}, actual ${result.actual_final_status}</p>
+      <p><strong>Diagnosis:</strong> ${result.diagnosis_text}</p>
+      <div class="action-row">${checks}</div>
+    `;
+    resultsNode.appendChild(article);
+  }
+}
+
 document.addEventListener("click", async (event) => {
   const runButton = event.target.closest("[data-run-agent]");
   if (runButton) {
@@ -73,6 +117,28 @@ document.addEventListener("click", async (event) => {
     } catch (error) {
       alert(`Could not reject action: ${error.message}`);
       rejectButton.disabled = false;
+    }
+    return;
+  }
+
+  const evalButton = event.target.closest("[data-run-evals]");
+  if (evalButton) {
+    evalButton.disabled = true;
+    try {
+      const target = evalButton.dataset.runEvals;
+      const response = target === "all"
+        ? await postEmpty("/api/evals/run")
+        : await postEmpty(`/api/evals/run/${target}`);
+      const summary = target === "all"
+        ? response
+        : { total: 1, passed: response.passed ? 1 : 0, failed: response.passed ? 0 : 1 };
+      const results = target === "all" ? response.results : [response];
+      renderEvaluationSummary(summary);
+      renderEvaluationResults(results);
+    } catch (error) {
+      alert(`Could not run evaluations: ${error.message}`);
+    } finally {
+      evalButton.disabled = false;
     }
   }
 });
