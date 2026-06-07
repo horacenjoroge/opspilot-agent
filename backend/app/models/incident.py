@@ -41,3 +41,4 @@ class Incident(Base):
 
     agent_steps = relationship("AgentStep", back_populates="incident", cascade="all, delete-orphan")
     approvals = relationship("ApprovalRequest", back_populates="incident", cascade="all, delete-orphan")
+    memory = relationship("IncidentMemory", back_populates="incident", cascade="all, delete-orphan", uselist=False)
