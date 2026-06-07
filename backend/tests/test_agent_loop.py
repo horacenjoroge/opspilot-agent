@@ -3,6 +3,7 @@ from httpx import ASGITransport, AsyncClient
 
 from app.agents.incident_agent import IncidentAgent
 from app.llm.base import LLMProvider
+from app.services.qwen_client import QwenClientError
 from app.schemas.incident import IncidentCreate
 from app.services.incidents import IncidentService
 
@@ -20,6 +21,11 @@ class UnknownToolProvider:
         return {}
 
 
+class BrokenProvider:
+    async def generate_json(self, *, system: str, user: str, schema_name: str) -> dict:
+        raise QwenClientError(kind="timeout_error", message="simulated timeout")
+
+
 @pytest.mark.anyio
 async def test_agent_happy_path_creates_approval_request_and_timeline(app_with_test_db, db_session) -> None:
     async with AsyncClient(transport=ASGITransport(app=app_with_test_db), base_url="http://testserver") as client:
@@ -33,9 +39,15 @@ async def test_agent_happy_path_creates_approval_request_and_timeline(app_with_t
 
         timeline_response = await client.get(f"/api/incidents/{incident['id']}/timeline")
         assert timeline_response.status_code == 200
+        labels = [item["label"] for item in timeline_response.json()]
         categories = [item["category"] for item in timeline_response.json()]
         assert "agent_step" in categories
         assert "approval_request" in categories
+        assert "memory_lookup" in labels
+        assert "tool_selection" in labels
+        assert "policy_decision" in labels
+        assert "final_report" in labels
+        assert "approval_request_created" in labels
 
 
 @pytest.mark.anyio
@@ -86,3 +98,20 @@ async def test_agent_enforces_max_step_limit(db_session) -> None:
 
     assert result["status"] == "failed"
     assert "max_steps" in result["error"]
+
+
+@pytest.mark.anyio
+async def test_agent_uses_safe_fallbacks_when_provider_fails(db_session) -> None:
+    incident = IncidentService(db_session).create_incident(
+        IncidentCreate(
+            title="Provider failure fallback",
+            description="External model provider is unavailable during an incident.",
+            source="manual",
+            severity="high",
+        )
+    )
+
+    result = await IncidentAgent(db_session, provider=BrokenProvider()).run(incident.id)
+
+    assert result["status"] == "resolved"
+    assert "Generate a structured incident report" in result["recommended_action"]

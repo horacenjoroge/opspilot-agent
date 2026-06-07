@@ -1,5 +1,6 @@
 from app.schemas.approval import ApprovalRequestCreate
 from app.schemas.enums import ApprovalStatus, RiskLevel
+from app.services.agent_steps import AgentStepService
 from app.services.approvals import ApprovalService
 from app.services.audit import AuditService
 from app.services.incidents import IncidentService
@@ -50,6 +51,12 @@ def test_approval_request_can_be_created_and_approved(db_session) -> None:
 
     incident_audit_logs = AuditService(db_session).list_for_target(target_type="incident", target_id=str(incident.id))
     assert "remediation.executed" in [log.action for log in incident_audit_logs]
+    step_types = [step.type for step in AgentStepService(db_session).list_for_incident(incident.id)]
+    assert "approval_request_created" in step_types
+    assert "approval_decision" in step_types
+    assert "remediation_execution" in step_types
+    assert "final_report" in step_types
+    assert "memory_saved" in step_types
 
 
 def test_rejected_request_does_not_execute_action(db_session) -> None:
@@ -80,6 +87,9 @@ def test_rejected_request_does_not_execute_action(db_session) -> None:
 
     incident_audit_logs = AuditService(db_session).list_for_target(target_type="incident", target_id=str(incident.id))
     assert [log.action for log in incident_audit_logs] == ["incident.created"]
+    step_types = [step.type for step in AgentStepService(db_session).list_for_incident(incident.id)]
+    assert "approval_request_created" in step_types
+    assert "approval_decision" in step_types
 
 
 def test_dangerous_action_policy_creates_approval_request(db_session) -> None:
@@ -101,3 +111,5 @@ def test_dangerous_action_policy_creates_approval_request(db_session) -> None:
 
     assert approval_request.risk_level == RiskLevel.dangerous
     assert approval_request.status == ApprovalStatus.pending
+    step_types = [step.type for step in AgentStepService(db_session).list_for_incident(incident.id)]
+    assert "approval_request_created" in step_types

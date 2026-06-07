@@ -43,5 +43,11 @@ async def test_full_workflow_create_run_approve_remediate_and_report(app_with_te
         assert "triage" in labels
         assert "logs_tool" in labels
         assert "remediation_recommendation" in labels
+        assert "policy_decision" in labels
+        assert "approval_request_created" in labels
+        assert "approval_decision" in labels
         assert "approval_request" in categories
         assert "remediation.executed" in labels
+        assert "final_report" in labels
+        assert "memory.saved" in labels
+        assert "memory_saved" in labels
