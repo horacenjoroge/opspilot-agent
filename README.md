@@ -1,52 +1,98 @@
 # OpsPilot
 
-OpsPilot is a Qwen-powered Autopilot Agent for incident triage and safe remediation, built for **Track 4: Autopilot Agent**.
+OpsPilot is an evidence-first SRE autopilot for incident triage and safe remediation.
 
-This repository currently contains the project foundation: architecture and product docs, a FastAPI backend, incident persistence, a provider abstraction for mock and Qwen-backed LLM calls, strict JSON prompt contracts, Docker Compose support, and a growing backend test suite. The next phases will add the tool registry, approvals workflow endpoints, and the controlled incident agent loop.
+Track: Track 4 — Autopilot Agent
 
-## Current Scope
+OpsPilot helps small engineering teams respond to production alerts faster by combining Qwen Cloud reasoning, backend-controlled tools, human approval for risky actions, and a fully auditable incident timeline.
 
-- Documentation-first project setup
-- FastAPI backend skeleton
-- SQLite-backed incident data model and service layer
-- Environment-driven settings with mock provider default
-- Mock and Qwen provider abstraction
-- Strict JSON prompt and parser contracts for agent outputs
-- `/health` readiness endpoint
-- Incident CRUD API with audit logging
-- Allowlisted tool registry with seeded investigation and action tools
-- Risk policy and approval workflow endpoints
-- Controlled incident agent loop with demo scenarios and timeline output
-- Built-in browser dashboard for incidents, approvals, and demo flows
-- Full integration test and runnable scenario eval coverage
-- Docker Compose local startup
-- Basic backend test coverage
+## Why It Matters
 
-## Quick Start
+Incident triage is repetitive, time-sensitive, and easy to get wrong under pressure. Many teams do not have dedicated 24/7 SRE coverage, so they need automation that accelerates investigation without giving an LLM unsafe control over infrastructure.
 
-```bash
-cp .env.example .env
-docker compose up --build
-```
+## What OpsPilot Does
 
-The backend will be available at `http://localhost:8000`, and `GET /health` should return service status plus the configured LLM provider.
+- receives or seeds incidents
+- classifies severity and incident type with Qwen or a mock provider
+- validates tool selection against an allowlist
+- gathers evidence from logs, metrics, health, deployments, and runbooks
+- generates a diagnosis and remediation recommendation
+- applies a backend risk policy
+- requires human approval for dangerous actions
+- simulates remediation safely
+- saves audit logs, agent steps, approvals, and incident memory
+- produces final reports and evaluation results
 
-Current incident endpoints:
+## Core Demo Flow
 
-- `POST /api/incidents`
-- `GET /api/incidents`
-- `GET /api/incidents/{id}`
-- `PATCH /api/incidents/{id}/status`
-- `POST /api/incidents/{id}/run-agent`
-- `GET /api/incidents/{id}/timeline`
-- `GET /api/approvals`
-- `GET /api/approvals/{id}`
-- `POST /api/approvals/{id}/approve`
-- `POST /api/approvals/{id}/reject`
-- `POST /api/demo/incidents/{scenario_name}`
+1. Create a demo incident such as `high_api_error_rate`.
+2. Run the agent from the dashboard or API.
+3. Review Qwen classification, selected tools, and gathered evidence.
+4. See the diagnosis and recommended remediation.
+5. Approve the risky action if required.
+6. Watch the simulated remediation complete.
+7. Inspect the final report, incident memory, and evaluation results.
 
-Current backend tool surface:
+## Feature List
 
+- FastAPI backend with thin routes and service-layer architecture
+- incident CRUD API and timeline API
+- Qwen provider abstraction with `MockProvider` and `QwenProvider`
+- strict JSON prompt contracts validated by Pydantic
+- tool registry with allowlisted investigation and action tools
+- backend risk policy engine with approval gating
+- human-in-the-loop approval workflow
+- incident memory retrieval and save-on-resolution
+- built-in browser dashboard
+- deterministic evaluation runner with PASS/FAIL output
+- Docker Compose local run and production-shaped deployment artifacts
+
+## Architecture Summary
+
+- dashboard: FastAPI-rendered HTML plus lightweight JS
+- backend API: incidents, approvals, demo scenarios, evaluations, health
+- agent orchestrator: controlled workflow loop with max-step limit
+- Qwen integration: provider abstraction and client with timeout/retry handling
+- tool system: allowlisted evidence and remediation tools
+- persistence: incidents, agent steps, approvals, audit logs, incident memory
+- deployment: Docker and Nginx artifacts for Alibaba Cloud ECS-style hosting
+
+See:
+- [docs/architecture-comprehensive.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/docs/architecture-comprehensive.md:1)
+- [docs/architecture-diagram.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/docs/architecture-diagram.md:1)
+- [docs/database-erd-design.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/docs/database-erd-design.md:1)
+
+## Tech Stack
+
+- Python 3.13
+- FastAPI
+- Pydantic
+- SQLAlchemy
+- SQLite
+- httpx
+- pytest
+- Docker / Docker Compose
+- Nginx
+- Qwen Cloud compatible-mode API
+
+## How Qwen Cloud Is Used
+
+Qwen is used for:
+- alert classification
+- tool-plan generation
+- diagnosis generation
+- remediation recommendation
+- final report generation
+
+All Qwen responses used by the backend must be strict JSON and are validated by Pydantic schemas before the workflow uses them. If Qwen times out or returns invalid JSON, OpsPilot falls back to a safe backend-controlled path.
+
+See [docs/qwen-cloud-usage.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/docs/qwen-cloud-usage.md:1).
+
+## How the Agent Uses Tools
+
+The model does not execute infrastructure actions directly. It can only recommend allowlisted tools. The backend validates tool names, executes the tools, stores results in the timeline, and rejects unknown tools.
+
+Implemented tools:
 - `logs_tool`
 - `metrics_tool`
 - `health_tool`
@@ -55,23 +101,31 @@ Current backend tool surface:
 - `remediation_tool`
 - `notification_tool`
 
-Browser dashboard routes:
+See [docs/tool-system.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/docs/tool-system.md:1).
 
-- `/`
-- `/incidents`
-- `/incidents/{id}`
-- `/approvals`
-- `/demo`
+## Human-In-The-Loop Safety Model
 
-Production deployment artifacts:
+- `safe` actions may execute directly
+- `medium` actions are approval-gated by configuration in this MVP
+- `dangerous` actions always require approval
+- unknown actions are rejected
+- the model cannot bypass policy
 
-- `deployment/docker-compose.prod.yml`
-- `deployment/nginx.conf`
-- `deployment/alibaba-cloud.md`
+See [docs/human-in-the-loop.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/docs/human-in-the-loop.md:1).
 
-## Local Development
+## API and Swagger
+
+- Swagger UI: `/docs`
+- ReDoc: `/redoc`
+- OpenAPI JSON: `/openapi.json`
+
+Full API reference:
+- [docs/api.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/docs/api.md:1)
+
+## Local Setup
 
 ```bash
+cp .env.example .env
 cd backend
 python3 -m venv .venv
 source .venv/bin/activate
@@ -80,47 +134,102 @@ pytest
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-## Qwen Setup
+Or from the repo root:
 
-Use the mock provider by default:
-
-```env
-LLM_PROVIDER=mock
+```bash
+docker compose up --build
 ```
 
-Switch to Qwen Cloud for the final demo:
+## Environment Variables
+
+Core variables:
 
 ```env
-LLM_PROVIDER=qwen
-QWEN_API_KEY=your_key_here
+APP_NAME=opspilot
+APP_ENV=development
+APP_HOST=0.0.0.0
+APP_PORT=8000
+DATABASE_URL=sqlite:///./opspilot.db
+LLM_PROVIDER=mock
+REQUIRE_APPROVAL_FOR_MEDIUM_RISK=true
+QWEN_API_KEY=
 QWEN_MODEL=qwen3.7-plus
 QWEN_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
 ```
 
-Qwen calls are isolated to `backend/app/services/qwen_client.py` and `backend/app/llm/qwen_provider.py`. Tests use the mock provider by default, and there is an optional live smoke test in `backend/tests/test_qwen_client.py` that only runs when `QWEN_API_KEY` is set.
+## Running the Backend
 
-Use the base URL that matches the key type:
-
-- Pay-as-you-go: `https://dashscope-intl.aliyuncs.com/compatible-mode/v1`
-- Token Plan: `https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1`
-- Coding Plan: `https://coding-intl.dashscope.aliyuncs.com/compatible-mode/v1`
-
-## Project Layout
-
-```txt
-backend/     FastAPI backend foundation
-docs/        product, architecture, and delivery docs
-deployment/  deployment artifacts for later phases
+```bash
+cd backend
+source .venv/bin/activate
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-## Safety Direction
+## Running the Frontend
 
-- Routes stay thin and business logic belongs in services.
-- Qwen calls will go through a provider abstraction.
-- Model outputs will be strict JSON and validated.
-- Dangerous actions will require human approval.
-- All decisions and tool calls will be auditable.
+There is no separate SPA frontend. The dashboard is served by FastAPI with Jinja templates and static assets.
+
+Dashboard routes:
+- `/`
+- `/incidents`
+- `/incidents/{id}`
+- `/approvals`
+- `/demo`
+- `/evals`
+
+## Running Tests
+
+```bash
+cd backend
+source .venv/bin/activate
+pytest
+```
+
+Current test result at the time of this update:
+- `43 passed, 1 skipped`
+
+The skipped test is the optional live Qwen smoke test when `QWEN_API_KEY` is not set for that run.
+
+## Deployment Notes
+
+- local development stack: `docker-compose.yml`
+- production-shaped stack: `deployment/docker-compose.prod.yml`
+- reverse proxy config: `deployment/nginx.conf`
+- target hosting shape: Alibaba Cloud ECS
+
+See:
+- [docs/deployment-guide.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/docs/deployment-guide.md:1)
+- [deployment/alibaba-cloud.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/deployment/alibaba-cloud.md:1)
+
+## Alibaba Cloud Proof
+
+The repository includes production-oriented deployment artifacts and a proof template, but a live public ECS proof URL still needs to be captured for final submission.
+
+See [deployment/alibaba-cloud.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/deployment/alibaba-cloud.md:1).
+
+## Demo Video / Script
+
+- demo script: [docs/demo-script.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/docs/demo-script.md:1)
+- Devpost draft: [docs/devpost-submission.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/docs/devpost-submission.md:1)
+
+## Honest Status
+
+Implemented:
+- backend workflow agent
+- tool allowlisting
+- approval gating
+- incident memory
+- evaluation runner
+- dashboard
+- Swagger/OpenAPI documentation
+
+Future Work:
+- live public Alibaba Cloud proof URL
+- final demo video
+- final Devpost links and published repo URL
+- migration tooling
+- Prometheus/Grafana/Sentry integration
 
 ## License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License. See [LICENSE](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/LICENSE:1).
