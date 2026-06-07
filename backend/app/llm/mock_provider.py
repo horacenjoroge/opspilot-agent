@@ -19,17 +19,17 @@ class MockProvider(LLMProvider):
         raise ValueError(f"Unsupported mock schema: {schema_name}")
 
     def _detect_scenario(self, text: str) -> str:
-        normalized = text.lower()
+        normalized = text.lower().replace("_", " ")
         if "queue" in normalized and "backlog" in normalized:
             return "queue_backlog"
         if "database latency" in normalized or "db latency" in normalized:
             return "database_latency"
-        if "ambiguous" in normalized:
-            return "ambiguous_alert"
-        if "tool failure" in normalized:
+        if "tool failure" in normalized or "log index" in normalized or "dependency may fail" in normalized:
             return "tool_failure"
         if "api error" in normalized or "5xx" in normalized or "error rate" in normalized:
             return "high_api_error_rate"
+        if "ambiguous" in normalized:
+            return "ambiguous_alert"
         return "ambiguous_alert"
 
     def _triage_response(self, scenario: str) -> dict[str, Any]:

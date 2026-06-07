@@ -19,6 +19,18 @@ class TriageDecision(BaseModel):
     requires_human_approval: bool = Field(..., examples=[False])
 
 
+class ToolSelectionDecision(BaseModel):
+    incident_type: str = Field(..., examples=["high_api_error_rate"])
+    selected_tools: list[str] = Field(
+        ...,
+        examples=[["logs_tool", "metrics_tool", "health_tool", "deployment_tool", "runbook_tool"]],
+    )
+    selection_summary: str = Field(
+        ...,
+        examples=["Validated the evidence-gathering tool plan before backend execution."],
+    )
+
+
 class DiagnosisDecision(BaseModel):
     root_cause_summary: str = Field(..., examples=["Database connections were exhausted in the application pool."])
     evidence_summary: str = Field(..., examples=["Logs and metrics both point to connection exhaustion and degraded API health."])

@@ -30,12 +30,13 @@ def diagnosis_system_prompt() -> str:
     )
 
 
-def diagnosis_user_prompt(*, incident_context: str, evidence_summary: str) -> str:
+def diagnosis_user_prompt(*, incident_context: str, evidence_summary: str, memory_context: str) -> str:
     return f"""
 Return strict JSON only based on the incident context and collected evidence.
 
 Incident context: {incident_context}
 Evidence summary: {evidence_summary}
+Related incident memory: {memory_context}
 
 Required JSON schema:
 {{

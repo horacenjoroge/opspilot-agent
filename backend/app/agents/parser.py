@@ -1,6 +1,6 @@
 from pydantic import ValidationError
 
-from app.agents.schemas import DiagnosisDecision, FinalReportDecision, RemediationDecision, TriageDecision
+from app.agents.schemas import DiagnosisDecision, FinalReportDecision, RemediationDecision, ToolSelectionDecision, TriageDecision
 
 
 class AgentOutputValidationError(ValueError):
@@ -17,6 +17,10 @@ def parse_triage_output(payload: dict, *, allowed_tools: set[str]) -> TriageDeci
 
 def parse_diagnosis_output(payload: dict) -> DiagnosisDecision:
     return _validate_payload(DiagnosisDecision, payload, "diagnosis")
+
+
+def parse_tool_selection_output(payload: dict) -> ToolSelectionDecision:
+    return _validate_payload(ToolSelectionDecision, payload, "tool_selection")
 
 
 def parse_remediation_output(payload: dict) -> RemediationDecision:
