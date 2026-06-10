@@ -7,7 +7,7 @@ from sqlalchemy.schema import CreateColumn
 from app.db.base import Base
 
 
-HEAD_REVISION = "0002_auth_foundation"
+HEAD_REVISION = "0003_agent_step_title"
 
 
 def _is_sqlite(connection: Connection) -> bool:

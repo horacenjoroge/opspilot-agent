@@ -20,6 +20,7 @@ class AgentStep(Base):
     tool_name: Mapped[str | None] = mapped_column(nullable=True)
     input_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     output_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    title: Mapped[str | None] = mapped_column(Text, nullable=True)
     model_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[ToolStatus] = mapped_column(
         Enum(ToolStatus, name="tool_status_enum"),

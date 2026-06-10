@@ -37,6 +37,7 @@ class TimelineService:
                         status=step.status.value,
                         details={
                             "step_number": step.step_number,
+                            "title": step.title,
                             "tool_name": step.tool_name,
                             "model_summary": step.model_summary,
                             "input_json": step.input_json,

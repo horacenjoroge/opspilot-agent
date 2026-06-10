@@ -198,7 +198,7 @@
         <div class="timeline-head">
           <div>
             <p class="eyebrow">{{ item.category.replace("_", " ") }}</p>
-            <strong>{{ item.label.replace("_", " ").title() }}</strong>
+            <strong>{{ item.details.title or item.label.replace("_", " ").title() }}</strong>
           </div>
           <span>{{ item.occurred_at }}</span>
         </div>

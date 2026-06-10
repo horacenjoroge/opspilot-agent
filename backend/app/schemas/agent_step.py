@@ -12,6 +12,7 @@ class AgentStepCreate(BaseModel):
     tool_name: str | None = Field(default=None, examples=["logs_tool"])
     input_json: dict | None = Field(default=None, examples=[{"query": "db connection errors"}])
     output_json: dict | None = Field(default=None, examples=[{"errors": ["too many clients already"]}])
+    title: str | None = Field(default=None, examples=["Tool Call — logs_tool"])
     model_summary: str | None = Field(default=None, examples=["Fetched relevant log lines for the alert window."])
     status: ToolStatus = Field(..., examples=["success"])
 
