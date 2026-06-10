@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}OpsPilot Architecture{% endblock %}
+{% block content %}
+<section class="hero compact">
+  <div>
+    <p class="eyebrow">System Explainer</p>
+    <h2>Why OpsPilot is an agent, not a chatbot</h2>
+    <p class="lede">OpsPilot is a backend-controlled incident workflow. Qwen proposes structured decisions, but the backend validates tools, stores evidence, applies policy, pauses for approval, and records everything in a timeline.</p>
+  </div>
+</section>
+
+<section class="detail-grid">
+  <article class="panel">
+    <h3>What OpsPilot Does</h3>
+    <p>OpsPilot helps engineers triage incidents, inspect evidence, recommend safe remediation, and preserve reusable incident memory without letting the LLM directly control infrastructure.</p>
+  </article>
+  <article class="panel">
+    <h3>Qwen's Role</h3>
+    <p>Qwen is used for triage, tool planning, diagnosis, remediation recommendation, and final report generation. Every response must be strict JSON before the backend uses it.</p>
+  </article>
+</section>
+
+<section class="panel">
+  <h3>Agent Workflow</h3>
+  <ol class="plain-list numbered">
+    {% for step in workflow_steps %}
+    <li>{{ step }}</li>
+    {% endfor %}
+  </ol>
+</section>
+
+<section class="detail-grid">
+  <article class="panel">
+    <h3>Tool System</h3>
+    <p>The model never executes infrastructure actions directly. It can only recommend allowlisted tools. The backend validates the names, runs the tools, and stores the outputs in the timeline.</p>
+  </article>
+  <article class="panel">
+    <h3>Approval Gate</h3>
+    <p>The backend risk policy, not the model, decides whether an action is safe, medium, or dangerous. Dangerous actions always create an approval request before any remediation can proceed.</p>
+  </article>
+</section>
+
+<section class="detail-grid">
+  <article class="panel">
+    <h3>Evaluation Harness</h3>
+    <p>OpsPilot includes seeded evaluation scenarios that run through the same backend workflow and return PASS or FAIL results so teams can inspect repeatability quickly.</p>
+  </article>
+  <article class="panel">
+    <h3>What Is Simulated</h3>
+    <ul class="plain-list">
+      {% for item in simulated_components %}
+      <li>{{ item }}</li>
+      {% endfor %}
+    </ul>
+  </article>
+</section>
+
+<section class="panel">
+  <h3>What Is Production-Shaped</h3>
+  <ul class="plain-list">
+    {% for item in production_shaped_components %}
+    <li>{{ item }}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}
