@@ -5,7 +5,10 @@ def triage_system_prompt() -> str:
     )
 
 
-def triage_user_prompt(*, incident_title: str, incident_description: str, source: str) -> str:
+def triage_user_prompt(
+    *, incident_title: str, incident_description: str, source: str, allowed_tools: list[str]
+) -> str:
+    tools_list = ", ".join(allowed_tools)
     return f"""
 Investigate the following incident and return strict JSON only.
 
@@ -13,11 +16,14 @@ Incident title: {incident_title}
 Source: {source}
 Description: {incident_description}
 
+You MUST only recommend tools from this exact list: {tools_list}
+Do not invent tool names. Only use names from the list above.
+
 Required JSON schema:
 {{
   "severity": "low|medium|high|critical",
   "incident_type": "string",
-  "recommended_tools": ["allowed_tool_name"],
+  "recommended_tools": ["tool_name_from_list_above"],
   "reasoning_summary": "string",
   "requires_human_approval": false
 }}
