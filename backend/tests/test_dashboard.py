@@ -6,6 +6,7 @@ from httpx import ASGITransport, AsyncClient
 async def test_dashboard_pages_render_without_postman(app_with_test_db) -> None:
     async with AsyncClient(transport=ASGITransport(app=app_with_test_db), base_url="http://testserver") as client:
         home = await client.get("/")
+        architecture = await client.get("/architecture")
         demo = await client.get("/demo")
         incidents = await client.get("/incidents")
         approvals = await client.get("/approvals")
@@ -13,6 +14,9 @@ async def test_dashboard_pages_render_without_postman(app_with_test_db) -> None:
 
     assert home.status_code == 200
     assert "OpsPilot" in home.text
+    assert "How To Use OpsPilot" in home.text
+    assert architecture.status_code == 200
+    assert "Why OpsPilot is an agent, not a chatbot" in architecture.text
     assert demo.status_code == 200
     assert "Launch a scenario" in demo.text
     assert incidents.status_code == 200
@@ -39,3 +43,5 @@ async def test_incident_detail_shows_memory_panel(app_with_test_db) -> None:
     assert detail.status_code == 200
     assert "Similar Incident Memory" in detail.text
     assert "generate_report" in detail.text
+    assert "Policy Decision" in detail.text
+    assert "Timeline" in detail.text

@@ -64,6 +64,11 @@ async def test_approval_endpoints_support_list_get_approve_and_reject(app_with_t
         assert list_response.status_code == 200
         assert len(list_response.json()) == 2
 
+        paginated_response = await client.get("/api/approvals", params={"limit": 1, "offset": 1, "include_meta": "true"})
+        assert paginated_response.status_code == 200
+        assert paginated_response.json()["meta"] == {"total": 2, "limit": 1, "offset": 1}
+        assert len(paginated_response.json()["items"]) == 1
+
         get_response = await client.get(f"/api/approvals/{first.id}")
         assert get_response.status_code == 200
         assert get_response.json()["action_name"] == "restart_api_workers_simulation"

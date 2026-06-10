@@ -51,3 +51,14 @@ async def test_full_workflow_create_run_approve_remediate_and_report(app_with_te
         assert "final_report" in labels
         assert "memory.saved" in labels
         assert "memory_saved" in labels
+
+        paginated_timeline_response = await client.get(
+            f"/api/incidents/{incident['id']}/timeline",
+            params={"limit": 2, "offset": 1, "include_meta": "true"},
+        )
+        assert paginated_timeline_response.status_code == 200
+        paginated_timeline = paginated_timeline_response.json()
+        assert paginated_timeline["meta"]["limit"] == 2
+        assert paginated_timeline["meta"]["offset"] == 1
+        assert paginated_timeline["meta"]["total"] >= len(timeline)
+        assert len(paginated_timeline["items"]) == 2

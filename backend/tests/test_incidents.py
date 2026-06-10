@@ -38,6 +38,45 @@ async def test_create_list_get_and_update_incident(app_with_test_db) -> None:
 
 
 @pytest.mark.anyio
+async def test_incident_list_supports_filters_and_optional_envelope(app_with_test_db) -> None:
+    async with AsyncClient(transport=ASGITransport(app=app_with_test_db), base_url="http://testserver") as client:
+        await client.post(
+            "/api/incidents",
+            json={
+                "title": "High API error rate",
+                "description": "Alert fired for sustained 5xx errors.",
+                "source": "alertmanager",
+                "severity": "high",
+            },
+        )
+        await client.post(
+            "/api/incidents",
+            json={
+                "title": "Ambiguous alert",
+                "description": "Weak signal",
+                "source": "manual",
+                "severity": "medium",
+            },
+        )
+
+        filtered = await client.get("/api/incidents", params={"severity": "high"})
+        enveloped = await client.get(
+            "/api/incidents",
+            params={"limit": 1, "offset": 0, "include_meta": "true", "status": "new"},
+        )
+
+    assert filtered.status_code == 200
+    assert len(filtered.json()) == 1
+    assert filtered.json()[0]["severity"] == "high"
+
+    payload = enveloped.json()
+    assert enveloped.status_code == 200
+    assert payload["meta"] == {"total": 2, "limit": 1, "offset": 0}
+    assert len(payload["items"]) == 1
+    assert payload["items"][0]["status"] == "new"
+
+
+@pytest.mark.anyio
 async def test_create_incident_rejects_invalid_severity(app_with_test_db) -> None:
     async with AsyncClient(transport=ASGITransport(app=app_with_test_db), base_url="http://testserver") as client:
         response = await client.post(
