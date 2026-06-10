@@ -1,6 +1,9 @@
+import logging
 from typing import Any
 
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger("opspilot.agent")
 
 from app.agents.parser import (
     AgentOutputValidationError,
@@ -298,16 +301,19 @@ class IncidentAgent:
                     incident_title=incident_title,
                     incident_description=incident_description,
                     source=source,
+                    allowed_tools=self.registry.list_tools(),
                 ),
                 schema_name="triage",
             )
             triage = parse_triage_output(payload, allowed_tools=set(self.registry.list_tools()))
             return triage, ToolStatus.success
-        except QwenClientError:
+        except QwenClientError as exc:
+            logger.error("Qwen triage call failed: %s — %s", exc.kind, exc.message)
             return self._fallback_triage(), ToolStatus.failed
         except AgentOutputValidationError as exc:
             if "Unknown tools recommended by model" in str(exc):
                 raise
+            logger.error("Triage output validation failed: %s", exc)
             return self._fallback_triage(), ToolStatus.failed
 
     async def _generate_diagnosis(
@@ -328,7 +334,8 @@ class IncidentAgent:
                 schema_name="diagnosis",
             )
             return parse_diagnosis_output(payload), ToolStatus.success
-        except (QwenClientError, AgentOutputValidationError):
+        except (QwenClientError, AgentOutputValidationError) as exc:
+            logger.error("Qwen diagnosis call failed: %s", exc)
             return self._fallback_diagnosis(evidence_summary), ToolStatus.failed
 
     async def _generate_remediation(
@@ -347,7 +354,8 @@ class IncidentAgent:
                 schema_name="remediation",
             )
             return parse_remediation_output(payload), ToolStatus.success
-        except (QwenClientError, AgentOutputValidationError):
+        except (QwenClientError, AgentOutputValidationError) as exc:
+            logger.error("Qwen remediation call failed: %s", exc)
             return self._fallback_remediation(), ToolStatus.failed
 
     async def _generate_final_report(
@@ -368,7 +376,8 @@ class IncidentAgent:
                 schema_name="final_report",
             )
             return parse_final_report_output(payload), ToolStatus.success
-        except (QwenClientError, AgentOutputValidationError):
+        except (QwenClientError, AgentOutputValidationError) as exc:
+            logger.error("Qwen final report call failed: %s", exc)
             return self._fallback_final_report(incident_summary, actions_taken, final_status), ToolStatus.failed
 
     def _fallback_triage(self) -> TriageDecision:

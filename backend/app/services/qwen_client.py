@@ -1,8 +1,11 @@
 import json
+import logging
 from dataclasses import dataclass
 from typing import Any
 
 import httpx
+
+logger = logging.getLogger("opspilot.qwen")
 
 from app.core.config import Settings, get_settings
 
@@ -64,6 +67,7 @@ class QwenClient:
 
         for attempt in range(self.max_retries + 1):
             try:
+                logger.info("Calling Qwen model=%s schema=%s attempt=%d", self.model, schema_name, attempt + 1)
                 async with httpx.AsyncClient(
                     timeout=self.timeout_seconds,
                     transport=self.transport,
@@ -73,7 +77,7 @@ class QwenClient:
                 data = response.json()
                 content = self._extract_content(data)
                 return json.loads(content)
-            except httpx.TimeoutException as exc:
+            except httpx.TimeoutException:
                 last_error = QwenClientError(
                     kind="timeout_error",
                     message=f"Timed out while calling Qwen for schema '{schema_name}'.",
