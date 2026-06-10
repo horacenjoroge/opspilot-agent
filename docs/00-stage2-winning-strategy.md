@@ -161,7 +161,7 @@ Target scenarios:
 
 - `high_api_error_rate`
 - `queue_backlog`
-- `database_latency_spike`
+- `database_latency`
 - `ambiguous_alert`
 - `tool_failure`
 

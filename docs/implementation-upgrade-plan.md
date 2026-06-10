@@ -147,7 +147,7 @@ Scenarios:
 
 1. `high_api_error_rate`
 2. `queue_backlog`
-3. `database_latency_spike`
+3. `database_latency`
 4. `ambiguous_alert`
 5. `tool_failure`
 
@@ -165,7 +165,7 @@ For each scenario define:
 Current status:
 - Implemented: seeded scenarios, expected outputs, runnable evaluation tests
 - Implemented: user-visible evaluation runner surface through dashboard and API
-- To Implement: scenario naming cleanup so `database_latency_spike` matches the public docs
+- Implemented: scenario key is `database_latency` consistently across code and docs
 
 Acceptance criteria:
 
