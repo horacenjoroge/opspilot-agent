@@ -8,11 +8,26 @@ Swagger and schema links:
 
 OpsPilot exposes only the API routes that exist today. Dashboard HTML routes are intentionally not documented here because they are not part of the public JSON API.
 
+## Cross-Cutting API Behavior
+
+- all responses include `X-Request-ID`
+- if the client sends `X-Request-ID`, OpsPilot reuses it
+- validation and not-found failures return a shared `ErrorResponse`
+- internal server errors return a sanitized `500` response without stack traces
+- demo and evaluation APIs can be disabled at app startup with feature flags
+- list endpoints support optional pagination and envelope metadata
+- when `ENABLE_AUTH=true`, business routes require a valid session cookie or bearer token
+- when `ENABLE_AUTH=false`, local demo mode bypasses auth safely
+
 ## Endpoint Table
 
 | Method | Path | Purpose | Request Body | Response Body | Status Codes | Notes |
 |---|---|---|---|---|---|---|
 | `GET` | `/health` | Health check | none | `HealthResponse` | `200` | Shows configured LLM provider |
+| `GET` | `/ready` | Readiness check | none | `ReadyResponse` | `200`, `503` | Checks DB connectivity and provider configuration |
+| `POST` | `/api/auth/login` | Login and create a session | `LoginRequest` | `LoginResponse` | `200`, `400`, `401` | Sets the DB-backed session cookie |
+| `POST` | `/api/auth/logout` | Logout current session | none | JSON status | `200`, `401` | Revokes cookie or bearer-token session |
+| `GET` | `/api/auth/me` | Current auth status | none | `AuthStatusResponse` | `200`, `401` | Returns current signed-in user when auth is enabled |
 | `POST` | `/api/incidents` | Create incident | `IncidentCreate` | `IncidentRead` | `201` | Manual incident creation |
 | `GET` | `/api/incidents` | List incidents | none | `IncidentRead[]` | `200` | Newest first |
 | `GET` | `/api/incidents/{incident_id}` | Get incident detail | none | `IncidentRead` | `200`, `404` | Includes diagnosis/report fields when available |
@@ -26,8 +41,53 @@ OpsPilot exposes only the API routes that exist today. Dashboard HTML routes are
 | `POST` | `/api/demo/incidents/{scenario_name}` | Seed demo incident | none | `IncidentRead` | `201`, `404` | Supported demo scenarios only |
 | `POST` | `/api/evals/run` | Run all evaluation scenarios | none | `EvaluationRunSummary` | `200` | Mock-backed deterministic judge view |
 | `POST` | `/api/evals/run/{scenario_name}` | Run one evaluation scenario | none | `EvaluationCaseResult` | `200`, `404` | Useful for demos and debugging |
+| `GET` | `/api/evals/history` | List persisted evaluation runs | none | `EvaluationHistoryResponse` | `200` | Returns latest stored eval runs with pagination metadata |
 
 ## Main Example Payloads
+
+### `GET /ready`
+
+Healthy response:
+
+```json
+{
+  "status": "ready",
+  "service": "opspilot",
+  "llm_provider": "mock",
+  "timestamp": "2026-06-08T10:20:00Z",
+  "checks": {
+    "database": {
+      "ok": true,
+      "detail": "Database connection succeeded."
+    },
+    "provider": {
+      "ok": true,
+      "detail": "Mock provider is configured for local/demo readiness."
+    }
+  }
+}
+```
+
+Unhealthy Qwen configuration response:
+
+```json
+{
+  "status": "not_ready",
+  "service": "opspilot",
+  "llm_provider": "qwen",
+  "timestamp": "2026-06-08T10:21:00Z",
+  "checks": {
+    "database": {
+      "ok": true,
+      "detail": "Database connection succeeded."
+    },
+    "provider": {
+      "ok": false,
+      "detail": "Missing required Qwen configuration: QWEN_API_KEY, QWEN_BASE_URL."
+    }
+  }
+}
+```
 
 ### `POST /api/incidents`
 
@@ -182,6 +242,55 @@ Response excerpt:
       }
     }
   ]
+}
+```
+
+## Common Error Shape
+
+Example:
+
+```json
+{
+  "detail": "Incident 999 was not found.",
+  "error_code": "http_404",
+  "request_id": "judge-request-123",
+  "errors": []
+}
+```
+
+## Feature Flags
+
+- `ENABLE_DEMO_ROUTES=false` removes `/api/demo/*`
+- `ENABLE_EVAL_ROUTES=false` removes `/api/evals/*`
+- `ENABLE_DASHBOARD=false` removes the HTML dashboard routes
+
+## Auth Notes
+
+- `admin`: full access
+- `operator`: create incidents, update status, run agent, launch demo incidents, run evals
+- `reviewer`: read-only on incidents plus approval/reject permissions
+- `viewer`: read-only access
+- dashboard login is only enforced when both `ENABLE_AUTH=true` and `ENABLE_DASHBOARD_AUTH=true`
+
+## Pagination And Filtering
+
+- `GET /api/incidents`
+  - filters: `status`, `severity`
+  - pagination: `limit`, `offset`
+- `GET /api/approvals`
+  - pagination: `limit`, `offset`
+- `GET /api/incidents/{incident_id}/timeline`
+  - pagination: `limit`, `offset`
+- add `include_meta=true` to any of the list endpoints above to receive:
+
+```json
+{
+  "items": [],
+  "meta": {
+    "total": 25,
+    "limit": 10,
+    "offset": 0
+  }
 }
 ```
 

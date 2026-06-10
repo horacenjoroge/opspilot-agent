@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Python 3.13
+- Python 3.11+
 - `pip`
 - Docker and Docker Compose for containerized local runs
 
@@ -36,6 +36,15 @@ LLM_PROVIDER=mock
 DATABASE_URL=sqlite:///./opspilot.db
 ```
 
+Optional auth flags:
+
+```env
+ENABLE_AUTH=false
+ENABLE_DASHBOARD_AUTH=false
+AUTH_SESSION_COOKIE_NAME=opspilot_session
+AUTH_SESSION_TTL_HOURS=24
+```
+
 ## Mock Provider Mode
 
 Recommended default for development:
@@ -55,7 +64,20 @@ QWEN_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
 
 ## Database Setup
 
-The app currently initializes the SQLAlchemy tables automatically on startup. There is no migration framework in the repo yet.
+The app still initializes SQLAlchemy tables automatically on startup for easy local demos.
+
+Alembic migrations now also exist for reproducible schema setup:
+
+```bash
+cd backend
+source .venv/bin/activate
+alembic upgrade head
+```
+
+Recommended local rule of thumb:
+
+- use `create_all()` behavior for quick disposable SQLite demo databases
+- use Alembic when you want a repeatable schema setup or are preparing for deployment
 
 ## Running Backend
 
@@ -63,6 +85,16 @@ The app currently initializes the SQLAlchemy tables automatically on startup. Th
 cd backend
 source .venv/bin/activate
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+## Seeding A Dev Admin
+
+When auth is enabled locally, seed a database-backed admin user:
+
+```bash
+cd backend
+source .venv/bin/activate
+python -m app.scripts.seed_admin --email admin@opspilot.local --password change-me-now
 ```
 
 ## Running Frontend

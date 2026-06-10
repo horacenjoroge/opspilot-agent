@@ -54,7 +54,7 @@ Incident triage is repetitive, time-sensitive, and easy to get wrong under press
 - agent orchestrator: controlled workflow loop with max-step limit
 - Qwen integration: provider abstraction and client with timeout/retry handling
 - tool system: allowlisted evidence and remediation tools
-- persistence: incidents, agent steps, approvals, audit logs, incident memory
+- persistence: incidents, agent steps, approvals, audit logs, incident memory, evaluation history
 - deployment: Docker and Nginx artifacts for Alibaba Cloud ECS-style hosting
 
 See:
@@ -64,11 +64,12 @@ See:
 
 ## Tech Stack
 
-- Python 3.13
+- Python 3.11+
 - FastAPI
 - Pydantic
 - SQLAlchemy
 - SQLite
+- Alembic
 - httpx
 - pytest
 - Docker / Docker Compose
@@ -87,6 +88,29 @@ Qwen is used for:
 All Qwen responses used by the backend must be strict JSON and are validated by Pydantic schemas before the workflow uses them. If Qwen times out or returns invalid JSON, OpsPilot falls back to a safe backend-controlled path.
 
 See [docs/qwen-cloud-usage.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/docs/qwen-cloud-usage.md:1).
+
+## Health And Readiness
+
+- `GET /health` is a lightweight liveness endpoint
+- `GET /ready` performs deeper readiness checks for:
+  - database connectivity
+  - provider configuration
+  - required Qwen config when `LLM_PROVIDER=qwen`
+
+Example readiness response:
+
+```json
+{
+  "status": "ready",
+  "service": "opspilot",
+  "llm_provider": "mock",
+  "timestamp": "2026-06-08T10:20:00Z",
+  "checks": {
+    "database": {"ok": true, "detail": "Database connection succeeded."},
+    "provider": {"ok": true, "detail": "Mock provider is configured for local/demo readiness."}
+  }
+}
+```
 
 ## How the Agent Uses Tools
 
@@ -113,11 +137,41 @@ See [docs/tool-system.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-ag
 
 See [docs/human-in-the-loop.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/docs/human-in-the-loop.md:1).
 
+## Auth And Roles
+
+OpsPilot now includes an optional auth foundation that stays off by default for local demos.
+
+Roles:
+- `admin` can manage everything
+- `operator` can create incidents and run the workflow
+- `reviewer` can approve or reject risky actions
+- `viewer` can read incidents, approvals, and eval history
+
+When `ENABLE_AUTH=true`:
+- API business routes require a valid session
+- dashboard pages can also require login when `ENABLE_DASHBOARD_AUTH=true`
+- sessions are stored in the database and issued through `/api/auth/login`
+
+Local dev admin setup:
+
+```bash
+cd backend
+source .venv/bin/activate
+python -m app.scripts.seed_admin --email admin@opspilot.local --password change-me-now
+```
+
 ## API and Swagger
 
 - Swagger UI: `/docs`
 - ReDoc: `/redoc`
 - OpenAPI JSON: `/openapi.json`
+
+### Request Tracing And Error Handling
+
+- every response includes `X-Request-ID`
+- incoming `X-Request-ID` values are reused when present
+- validation, not-found, and internal server errors return a common JSON error shape
+- internal errors are sanitized and do not expose stack traces or secrets to clients
 
 Full API reference:
 - [docs/api.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/docs/api.md:1)
@@ -151,11 +205,41 @@ APP_HOST=0.0.0.0
 APP_PORT=8000
 DATABASE_URL=sqlite:///./opspilot.db
 LLM_PROVIDER=mock
+ENABLE_DEMO_ROUTES=true
+ENABLE_EVAL_ROUTES=true
+ENABLE_DASHBOARD=true
+ENABLE_AUTH=false
+ENABLE_DASHBOARD_AUTH=false
+AUTH_SESSION_COOKIE_NAME=opspilot_session
+AUTH_SESSION_TTL_HOURS=24
 REQUIRE_APPROVAL_FOR_MEDIUM_RISK=true
 QWEN_API_KEY=
 QWEN_MODEL=qwen3.7-plus
 QWEN_BASE_URL=https://dashscope-intl.aliyuncs.com/compatible-mode/v1
 ```
+
+Feature flag notes:
+- `ENABLE_DEMO_ROUTES=false` removes `/api/demo/*`
+- `ENABLE_EVAL_ROUTES=false` removes `/api/evals/*`
+- `ENABLE_DASHBOARD=false` removes the HTML dashboard routes such as `/`, `/incidents`, `/approvals`, `/demo`, and `/evals`
+- `ENABLE_AUTH=true` protects API business routes with DB-backed sessions
+- `ENABLE_DASHBOARD_AUTH=true` redirects dashboard pages to `/login` when the user is not signed in
+- defaults stay demo-friendly so local and hackathon environments still work out of the box
+
+Pagination and filtering notes:
+- `GET /api/incidents` supports `limit`, `offset`, `status`, and `severity`
+- `GET /api/approvals` supports `limit` and `offset`
+- `GET /api/incidents/{id}/timeline` supports `limit` and `offset`
+- add `include_meta=true` to receive an envelope with `items` plus `{total, limit, offset}`
+- default behavior stays backward-compatible and returns plain arrays
+
+Database notes:
+- SQLite remains the default demo database
+- Alembic migrations now exist for reproducible schema setup
+- existing local SQLite demo DBs created before Alembic can now be bootstrapped safely with `alembic upgrade head`, including additive legacy column repair
+- evaluation history is persisted in addition to the live eval response
+- safe indexes were added for incident, approval, agent-step, and audit query patterns
+- users and user sessions are now persisted for optional auth-enabled environments
 
 ## Running the Backend
 
@@ -186,7 +270,7 @@ pytest
 ```
 
 Current test result at the time of this update:
-- `43 passed, 1 skipped`
+- `65 passed, 1 skipped`
 
 The skipped test is the optional live Qwen smoke test when `QWEN_API_KEY` is not set for that run.
 
@@ -220,6 +304,8 @@ Implemented:
 - approval gating
 - incident memory
 - evaluation runner
+- persisted evaluation history
+- Alembic migration support
 - dashboard
 - Swagger/OpenAPI documentation
 
@@ -227,8 +313,10 @@ Future Work:
 - live public Alibaba Cloud proof URL
 - final demo video
 - final Devpost links and published repo URL
-- migration tooling
 - Prometheus/Grafana/Sentry integration
+
+Implementation hardening tracker:
+- [docs/implementation-hardening-checklist.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/docs/implementation-hardening-checklist.md:1)
 
 ## License
 

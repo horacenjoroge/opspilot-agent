@@ -13,3 +13,9 @@
 - [x] Tests runnable
 - [x] Main demo scenario works
 - [x] Track clearly identified as Track 4: Autopilot Agent
+- [x] Health and readiness endpoints documented
+- [x] Request tracing and structured API errors implemented
+- [x] Demo, eval, and dashboard feature flags implemented
+- [x] Pagination and filtering implemented for list/timeline reads
+- [x] Evaluation history is persisted
+- [x] Alembic migration support exists
