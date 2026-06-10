@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.common import PaginationMeta
 from app.schemas.enums import ApprovalStatus, RiskLevel
 
 
@@ -30,3 +31,8 @@ class ApprovalRequestRead(ApprovalRequestCreate):
     approved_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class ApprovalRequestListResponse(BaseModel):
+    items: list[ApprovalRequestRead] = Field(default_factory=list)
+    meta: PaginationMeta

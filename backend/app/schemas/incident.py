@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.common import PaginationMeta
 from app.schemas.enums import IncidentStatus, Severity
 
 
@@ -33,3 +34,8 @@ class IncidentRead(IncidentBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class IncidentListResponse(BaseModel):
+    items: list[IncidentRead] = Field(default_factory=list)
+    meta: PaginationMeta

@@ -32,3 +32,10 @@ class ApprovalStatus(StrEnum):
     pending = "pending"
     approved = "approved"
     rejected = "rejected"
+
+
+class UserRole(StrEnum):
+    admin = "admin"
+    operator = "operator"
+    reviewer = "reviewer"
+    viewer = "viewer"
