@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     enable_demo_routes: bool = Field(default=True, alias="ENABLE_DEMO_ROUTES")
     enable_eval_routes: bool = Field(default=True, alias="ENABLE_EVAL_ROUTES")
     enable_dashboard: bool = Field(default=True, alias="ENABLE_DASHBOARD")
+    enable_metrics: bool = Field(default=True, alias="ENABLE_METRICS")
     auth_session_cookie_name: str = Field(default="opspilot_session", alias="AUTH_SESSION_COOKIE_NAME")
     auth_session_ttl_hours: int = Field(default=24, alias="AUTH_SESSION_TTL_HOURS")
     require_approval_for_medium_risk: bool = Field(default=True, alias="REQUIRE_APPROVAL_FOR_MEDIUM_RISK")
