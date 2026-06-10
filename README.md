@@ -58,9 +58,9 @@ Incident triage is repetitive, time-sensitive, and easy to get wrong under press
 - deployment: Docker and Nginx artifacts for Alibaba Cloud ECS-style hosting
 
 See:
-- [docs/architecture-comprehensive.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/docs/architecture-comprehensive.md:1)
-- [docs/architecture-diagram.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/docs/architecture-diagram.md:1)
-- [docs/database-erd-design.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/docs/database-erd-design.md:1)
+- [docs/architecture-comprehensive.md](docs/architecture-comprehensive.md)
+- [docs/architecture-diagram.md](docs/architecture-diagram.md)
+- [docs/database-erd-design.md](docs/database-erd-design.md)
 
 ## Tech Stack
 
@@ -87,7 +87,7 @@ Qwen is used for:
 
 All Qwen responses used by the backend must be strict JSON and are validated by Pydantic schemas before the workflow uses them. If Qwen times out or returns invalid JSON, OpsPilot falls back to a safe backend-controlled path.
 
-See [docs/qwen-cloud-usage.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/docs/qwen-cloud-usage.md:1).
+See [docs/qwen-cloud-usage.md](docs/qwen-cloud-usage.md).
 
 ## Health And Readiness
 
@@ -125,7 +125,7 @@ Implemented tools:
 - `remediation_tool`
 - `notification_tool`
 
-See [docs/tool-system.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/docs/tool-system.md:1).
+See [docs/tool-system.md](docs/tool-system.md).
 
 ## Human-In-The-Loop Safety Model
 
@@ -135,7 +135,7 @@ See [docs/tool-system.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-ag
 - unknown actions are rejected
 - the model cannot bypass policy
 
-See [docs/human-in-the-loop.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/docs/human-in-the-loop.md:1).
+See [docs/human-in-the-loop.md](docs/human-in-the-loop.md).
 
 ## Auth And Roles
 
@@ -174,7 +174,7 @@ python -m app.scripts.seed_admin --email admin@opspilot.local --password change-
 - internal errors are sanitized and do not expose stack traces or secrets to clients
 
 Full API reference:
-- [docs/api.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/docs/api.md:1)
+- [docs/api.md](docs/api.md)
 
 ## Local Setup
 
@@ -282,19 +282,19 @@ The skipped test is the optional live Qwen smoke test when `QWEN_API_KEY` is not
 - target hosting shape: Alibaba Cloud ECS
 
 See:
-- [docs/deployment-guide.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/docs/deployment-guide.md:1)
-- [deployment/alibaba-cloud.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/deployment/alibaba-cloud.md:1)
+- [docs/deployment-guide.md](docs/deployment-guide.md)
+- [deployment/alibaba-cloud.md](deployment/alibaba-cloud.md)
 
 ## Alibaba Cloud Proof
 
 The repository includes production-oriented deployment artifacts and a proof template, but a live public ECS proof URL still needs to be captured for final submission.
 
-See [deployment/alibaba-cloud.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/deployment/alibaba-cloud.md:1).
+See [deployment/alibaba-cloud.md](deployment/alibaba-cloud.md).
 
 ## Demo Video / Script
 
-- demo script: [docs/demo-script.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/docs/demo-script.md:1)
-- Devpost draft: [docs/devpost-submission.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/docs/devpost-submission.md:1)
+- demo script: [docs/demo-script.md](docs/demo-script.md)
+- Devpost draft: [docs/devpost-submission.md](docs/devpost-submission.md)
 
 ## Honest Status
 
@@ -316,8 +316,8 @@ Future Work:
 - Prometheus/Grafana/Sentry integration
 
 Implementation hardening tracker:
-- [docs/implementation-hardening-checklist.md](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/docs/implementation-hardening-checklist.md:1)
+- [docs/implementation-hardening-checklist.md](docs/implementation-hardening-checklist.md)
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/LICENSE:1).
+This project is licensed under the MIT License. See [LICENSE](LICENSE).
