@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session
 
 from app.models.incident import Incident
 from app.schemas.incident import IncidentCreate
-from app.schemas.enums import IncidentStatus
+from app.schemas.enums import IncidentStatus, Severity
 from app.services.audit import AuditService
 
 
@@ -34,8 +34,38 @@ class IncidentService:
         self.db.refresh(incident)
         return incident
 
-    def list_incidents(self) -> list[Incident]:
-        return self.db.query(Incident).order_by(Incident.created_at.desc(), Incident.id.desc()).all()
+    def list_incidents(
+        self,
+        *,
+        limit: int | None = None,
+        offset: int = 0,
+        status: IncidentStatus | None = None,
+        severity: Severity | None = None,
+    ) -> list[Incident]:
+        query = self.db.query(Incident)
+        if status is not None:
+            query = query.filter(Incident.status == status)
+        if severity is not None:
+            query = query.filter(Incident.severity == severity)
+        query = query.order_by(Incident.created_at.desc(), Incident.id.desc())
+        if offset:
+            query = query.offset(offset)
+        if limit is not None:
+            query = query.limit(limit)
+        return query.all()
+
+    def count_incidents(
+        self,
+        *,
+        status: IncidentStatus | None = None,
+        severity: Severity | None = None,
+    ) -> int:
+        query = self.db.query(Incident)
+        if status is not None:
+            query = query.filter(Incident.status == status)
+        if severity is not None:
+            query = query.filter(Incident.severity == severity)
+        return query.count()
 
     def get_incident(self, incident_id: int) -> Incident:
         incident = self.db.get(Incident, incident_id)

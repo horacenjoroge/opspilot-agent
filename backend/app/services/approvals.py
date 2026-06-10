@@ -90,12 +90,16 @@ class ApprovalService:
             )
         )
 
-    def list_requests(self) -> list[ApprovalRequest]:
-        return (
-            self.db.query(ApprovalRequest)
-            .order_by(ApprovalRequest.requested_at.desc(), ApprovalRequest.id.desc())
-            .all()
-        )
+    def list_requests(self, *, limit: int | None = None, offset: int = 0) -> list[ApprovalRequest]:
+        query = self.db.query(ApprovalRequest).order_by(ApprovalRequest.requested_at.desc(), ApprovalRequest.id.desc())
+        if offset:
+            query = query.offset(offset)
+        if limit is not None:
+            query = query.limit(limit)
+        return query.all()
+
+    def count_requests(self) -> int:
+        return self.db.query(ApprovalRequest).count()
 
     def get_request(self, approval_id: int) -> ApprovalRequest:
         approval_request = self.db.get(ApprovalRequest, approval_id)

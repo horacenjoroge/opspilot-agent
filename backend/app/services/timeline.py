@@ -17,7 +17,13 @@ class TimelineService:
         self.approval_service = ApprovalService(db)
         self.audit_service = AuditService(db)
 
-    def build_incident_timeline(self, incident_id: int) -> list[TimelineItem]:
+    def build_incident_timeline(
+        self,
+        incident_id: int,
+        *,
+        limit: int | None = None,
+        offset: int = 0,
+    ) -> list[TimelineItem]:
         items: list[tuple[datetime, TimelineItem]] = []
 
         for step in self.agent_step_service.list_for_incident(incident_id):
@@ -77,4 +83,12 @@ class TimelineService:
             )
 
         items.sort(key=lambda item: item[0])
-        return [item for _, item in items]
+        timeline = [item for _, item in items]
+        if offset:
+            timeline = timeline[offset:]
+        if limit is not None:
+            timeline = timeline[:limit]
+        return timeline
+
+    def count_incident_timeline_items(self, incident_id: int) -> int:
+        return len(self.build_incident_timeline(incident_id))
