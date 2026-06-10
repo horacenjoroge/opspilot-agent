@@ -164,6 +164,8 @@ class IncidentAgent:
                 "restart_api_workers_simulation",
                 "rollback_deployment_simulation",
                 "scale_workers_simulation",
+                "clear_queue_simulation",
+                "disable_feature_flag_simulation",
             ]
             remediation, remediation_status = await self._generate_remediation(
                 diagnosis_summary=diagnosis.root_cause_summary,

@@ -14,6 +14,8 @@ ACTION_RISK_LEVELS = {
     "restart_api_workers_simulation": RiskLevel.dangerous,
     "rollback_deployment_simulation": RiskLevel.dangerous,
     "scale_workers_simulation": RiskLevel.medium,
+    "clear_queue_simulation": RiskLevel.medium,
+    "disable_feature_flag_simulation": RiskLevel.medium,
 }
 
 
