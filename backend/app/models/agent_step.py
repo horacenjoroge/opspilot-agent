@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, JSON, Text, func
+from sqlalchemy import DateTime, Enum, ForeignKey, Index, JSON, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -9,6 +9,9 @@ from app.schemas.enums import ToolStatus
 
 class AgentStep(Base):
     __tablename__ = "agent_steps"
+    __table_args__ = (
+        Index("ix_agent_steps_incident_id_step_number", "incident_id", "step_number"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     incident_id: Mapped[int] = mapped_column(ForeignKey("incidents.id"), nullable=False, index=True)

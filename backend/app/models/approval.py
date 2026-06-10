@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Text, func
+from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Index, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -9,6 +9,10 @@ from app.schemas.enums import ApprovalStatus, RiskLevel
 
 class ApprovalRequest(Base):
     __tablename__ = "approval_requests"
+    __table_args__ = (
+        Index("ix_approval_requests_incident_id_status", "incident_id", "status"),
+        Index("ix_approval_requests_status_requested_at", "status", "requested_at"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     incident_id: Mapped[int] = mapped_column(ForeignKey("incidents.id"), nullable=False, index=True)
