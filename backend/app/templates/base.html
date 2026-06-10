@@ -6,7 +6,11 @@
     <title>{% block title %}OpsPilot{% endblock %}</title>
     <link rel="stylesheet" href="/static/dashboard.css" />
   </head>
-  <body>
+  <body
+    data-provider="{{ provider_label }}"
+    data-environment="{{ environment_label }}"
+    data-current-user="{{ current_user_name or '' }}"
+  >
     <div class="shell">
       <aside class="sidebar">
         <div class="brand">
@@ -14,15 +18,41 @@
           <h1>OpsPilot</h1>
           <p class="tagline">Incident triage with safe remediation and visible evidence.</p>
         </div>
+        <div class="sidebar-status">
+          <span class="status-pill">{{ provider_mode }}</span>
+          <span class="status-pill neutral">{{ environment_label }}</span>
+        </div>
+        <div class="sidebar-user">
+          {% if auth_enabled and current_user %}
+          <p class="eyebrow">Signed In</p>
+          <p class="user-name">{{ current_user.name }}</p>
+          <p class="user-role">{{ current_user.role.value }}</p>
+          <a href="/logout" class="secondary-link">Logout</a>
+          {% elif auth_enabled %}
+          <p class="eyebrow">Authentication</p>
+          <p class="user-name">Login required</p>
+          <a href="/login?next={{ request.url.path }}" class="secondary-link">Open login</a>
+          {% else %}
+          <p class="eyebrow">Authentication</p>
+          <p class="user-name">Local access enabled</p>
+          <p class="user-role">role: admin</p>
+          {% endif %}
+        </div>
         <nav class="nav">
-          <a href="/" class="nav-link">Overview</a>
-          <a href="/incidents" class="nav-link">Incidents</a>
-          <a href="/approvals" class="nav-link">Approvals</a>
-          <a href="/demo" class="nav-link">Demo</a>
-          <a href="/evals" class="nav-link">Evaluations</a>
+          <a href="/" class="nav-link {% if request.url.path == '/' %}active{% endif %}">Overview</a>
+          <a href="/architecture" class="nav-link {% if request.url.path == '/architecture' %}active{% endif %}">Architecture</a>
+          <a href="/incidents" class="nav-link {% if request.url.path.startswith('/incidents') %}active{% endif %}">Incidents</a>
+          <a href="/approvals" class="nav-link {% if request.url.path == '/approvals' %}active{% endif %}">Approvals</a>
+          <a href="/demo" class="nav-link {% if request.url.path == '/demo' %}active{% endif %}">Demo</a>
+          <a href="/evals" class="nav-link {% if request.url.path == '/evals' %}active{% endif %}">Evaluations</a>
         </nav>
       </aside>
       <main class="content">
+        <section class="judge-banner">
+          <strong>{{ banner_text }}</strong>
+          <span>Environment: {{ environment_label }}</span>
+        </section>
+        <div id="app-banner" class="app-banner hidden" role="status" aria-live="polite"></div>
         {% block content %}{% endblock %}
       </main>
     </div>

@@ -5,9 +5,12 @@
   <div>
     <p class="eyebrow">Autopilot Agent</p>
     <h2>Backend-first incident response</h2>
-    <p class="lede">Run demo alerts, inspect agent decisions, and approve risky remediations without leaving the browser.</p>
+    <p class="lede">Run a seeded incident, inspect the full agent workflow, and verify that risky actions pause for human approval instead of letting the model act alone.</p>
   </div>
-  <a class="button primary" href="/demo">Launch Demo Scenario</a>
+  <div class="hero-actions">
+    <a class="button primary" href="/demo">Launch Incident Scenario</a>
+    <a class="button secondary" href="/architecture">View Architecture</a>
+  </div>
 </section>
 
 <section class="stats-grid">
@@ -23,6 +26,36 @@
     <span>Pending Approvals</span>
     <strong>{{ counts.pending_approvals }}</strong>
   </article>
+</section>
+
+<section class="detail-grid">
+  <article class="panel">
+    <h3>How To Use OpsPilot</h3>
+    <ol class="plain-list numbered">
+      {% for step in how_to_use_steps %}
+      <li>{{ step }}</li>
+      {% endfor %}
+    </ol>
+  </article>
+  <article class="panel">
+    <h3>Quick Links</h3>
+    <div class="action-grid">
+      <a class="button primary" href="/demo">Launch incident scenario</a>
+      <a class="button ghost" href="/incidents">View incidents</a>
+      <a class="button ghost" href="/approvals">View approvals</a>
+      <a class="button ghost" href="/evals">Run evaluations</a>
+      <a class="button ghost" href="/architecture">View architecture</a>
+    </div>
+  </article>
+</section>
+
+<section class="panel">
+  <h3>Recommended Workflow</h3>
+  <ol class="plain-list numbered">
+    {% for step in recommended_flow %}
+    <li>{{ step }}</li>
+    {% endfor %}
+  </ol>
 </section>
 
 <section class="panel">
@@ -50,7 +83,7 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="4">No incidents yet. Start with a demo scenario.</td>
+          <td colspan="4">No incidents yet. Start with an incident scenario.</td>
         </tr>
         {% endfor %}
       </tbody>

@@ -3,25 +3,31 @@
 {% block content %}
 <section class="hero compact">
   <div>
-    <p class="eyebrow">Deterministic Demo</p>
+    <p class="eyebrow">Scenario Library</p>
     <h2>Launch a scenario</h2>
-    <p class="lede">Create a seeded incident, open it, and run the agent without touching Postman.</p>
+    <p class="lede">Create a seeded incident, open it, and run the agent without touching Postman. The recommended scenario is highlighted below.</p>
   </div>
 </section>
 
 <section class="card-grid">
   {% for scenario in scenarios %}
   <article class="scenario-card">
-    <h3>{{ scenario.replace("_", " ").title() }}</h3>
-    <p>Seeded evidence and deterministic mock-provider flow for the {{ scenario }} scenario.</p>
-    <button class="button primary" data-demo-scenario="{{ scenario }}">Create demo incident</button>
+    <div class="panel-header">
+      <h3>{{ scenario.title }}</h3>
+      {% if scenario.recommended %}
+      <span class="badge">Recommended</span>
+      {% endif %}
+    </div>
+    <p>{{ scenario.description }}</p>
+    <p class="section-note">Scenario key: {{ scenario.key }}</p>
+    <button class="button primary" data-demo-scenario="{{ scenario.key }}">Create demo incident</button>
   </article>
   {% endfor %}
 </section>
 
 <section class="panel">
   <div class="panel-header">
-    <h3>Recent Demo Incidents</h3>
+    <h3>Recent Scenario Incidents</h3>
     <a href="/incidents">See all incidents</a>
   </div>
   <div class="stack">
@@ -37,8 +43,12 @@
       </div>
     </article>
     {% else %}
-    <p>No demo incidents created yet.</p>
+    <p>No scenario incidents created yet.</p>
     {% endfor %}
   </div>
+</section>
+
+<section class="callout">
+  <strong>After creating an incident:</strong> Open the incident detail page and run the agent. That page is the best place to inspect reasoning, evidence, policy, approval state, final report, and memory.
 </section>
 {% endblock %}

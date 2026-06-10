@@ -5,9 +5,10 @@
   <div>
     <p class="eyebrow">Evaluation</p>
     <h2>Scenario Runner</h2>
-    <p class="lede">Run deterministic incident scenarios through the real backend workflow and inspect PASS or FAIL results without opening pytest.</p>
+    <p class="lede">Run seeded incident scenarios through the backend workflow and inspect PASS or FAIL results without opening pytest. This shows whether the workflow stays repeatable across multiple situations.</p>
   </div>
   <div class="hero-actions">
+    <span class="badge neutral">Provider: {{ provider_label }}</span>
     <button class="button primary" data-run-evals="all">Run All Scenarios</button>
   </div>
 </section>
@@ -21,7 +22,9 @@
     {% for scenario in cases %}
     <article class="scenario-card">
       <p class="eyebrow">Scenario</p>
-      <h3>{{ scenario }}</h3>
+      <h3>{{ scenario_cards[loop.index0].title if scenario_cards[loop.index0].title else scenario }}</h3>
+      <p>{{ scenario_cards[loop.index0].description }}</p>
+      <p class="section-note">Case key: {{ scenario }}</p>
       <div class="action-row">
         <button class="button secondary small" data-run-evals="{{ scenario }}">Run Scenario</button>
       </div>
@@ -38,5 +41,40 @@
   <div id="eval-results" class="stack">
     <p>Run the evaluation suite to see PASS or FAIL results for each scenario.</p>
   </div>
+</section>
+
+<section class="panel">
+  <h3>Historical Eval Trends</h3>
+  {% if latest_eval_run %}
+  <article class="approval-card">
+    <div>
+      <strong>Latest run #{{ latest_eval_run.id }}</strong>
+      <p>Provider: {{ latest_eval_run.provider }}</p>
+      <p>Status: {{ latest_eval_run.status }}</p>
+      <p>Passed {{ latest_eval_run.passed_cases }} of {{ latest_eval_run.total_cases }} cases.</p>
+    </div>
+    <div class="approval-meta">
+      <span class="badge {% if latest_eval_run.failed_cases == 0 %}{% else %}neutral{% endif %}">{{ latest_eval_run.failed_cases == 0 and "PASS" or "MIXED" }}</span>
+      <span class="badge neutral">{{ latest_eval_run.duration_ms or "n/a" }} ms</span>
+    </div>
+  </article>
+  <div class="stack">
+    {% for run in eval_history_items %}
+    <article class="approval-card">
+      <div>
+        <strong>Run #{{ run.id }}</strong>
+        <p>Provider: {{ run.provider }}</p>
+        <p>Status: {{ run.status }}</p>
+      </div>
+      <div class="approval-meta">
+        <span class="badge {% if run.failed_cases == 0 %}{% else %}neutral{% endif %}">{{ run.passed_cases }}/{{ run.total_cases }} passed</span>
+        <span class="badge neutral">{{ run.started_at }}</span>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p>{{ historical_eval_placeholder }}</p>
+  {% endif %}
 </section>
 {% endblock %}

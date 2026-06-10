@@ -1,3 +1,51 @@
+function getBanner() {
+  return document.getElementById("app-banner");
+}
+
+function showBanner(message, tone = "info") {
+  const banner = getBanner();
+  if (!banner) {
+    return;
+  }
+  banner.textContent = message;
+  banner.className = `app-banner ${tone}`;
+}
+
+function clearBanner() {
+  const banner = getBanner();
+  if (!banner) {
+    return;
+  }
+  banner.textContent = "";
+  banner.className = "app-banner hidden";
+}
+
+function setButtonLoading(button, loadingText) {
+  button.dataset.originalText = button.textContent;
+  button.textContent = loadingText;
+  button.disabled = true;
+  button.classList.add("is-loading");
+}
+
+function resetButtonLoading(button) {
+  if (button.dataset.originalText) {
+    button.textContent = button.dataset.originalText;
+  }
+  button.disabled = false;
+  button.classList.remove("is-loading");
+}
+
+async function parseError(response) {
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    const payload = await response.json();
+    const requestId = payload.request_id ? ` Request ID: ${payload.request_id}.` : "";
+    return `${payload.detail || `Request failed: ${response.status}`}${requestId}`;
+  }
+  const text = await response.text();
+  return text || `Request failed: ${response.status}`;
+}
+
 async function postJson(url, body) {
   const response = await fetch(url, {
     method: "POST",
@@ -5,19 +53,25 @@ async function postJson(url, body) {
     body: JSON.stringify(body),
   });
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(error || `Request failed: ${response.status}`);
+    throw new Error(await parseError(response));
   }
   return response.json();
+}
+
+function getCurrentUserName() {
+  return document.body.dataset.currentUser || "dashboard.operator";
 }
 
 async function postEmpty(url) {
   const response = await fetch(url, { method: "POST" });
   if (!response.ok) {
-    const error = await response.text();
-    throw new Error(error || `Request failed: ${response.status}`);
+    throw new Error(await parseError(response));
   }
   return response.json();
+}
+
+async function loginWithPassword(email, password) {
+  return postJson("/api/auth/login", { email, password });
 }
 
 function renderEvaluationSummary(summary) {
@@ -25,7 +79,8 @@ function renderEvaluationSummary(summary) {
   if (!summaryNode) {
     return;
   }
-  summaryNode.textContent = `${summary.passed}/${summary.total} passed`;
+  const provider = document.body.dataset.provider || "Unknown";
+  summaryNode.textContent = `${summary.passed}/${summary.total} passed · Provider: ${provider}`;
   summaryNode.className = `badge ${summary.failed === 0 ? "" : "neutral"}`.trim();
 }
 
@@ -54,7 +109,7 @@ function renderEvaluationResults(results) {
       </div>
       <p><strong>Incident:</strong> <a href="/incidents/${result.incident_id}">#${result.incident_id}</a></p>
       <p><strong>Severity:</strong> expected ${result.expected.expected_severity}, actual ${result.actual_severity}</p>
-      <p><strong>Tools:</strong> expected ${result.expected.expected_tools.join(", ")}, actual ${result.actual_tools.join(", ")}</p>
+      <p><strong>Tools:</strong> expected ${result.expected.expected_tools.join(", ")}, actual ${result.actual_tools.join(", ") || "none"}</p>
       <p><strong>Approval:</strong> expected ${result.expected.expected_requires_approval}, actual ${result.actual_requires_approval}</p>
       <p><strong>Final status:</strong> expected ${result.expected.expected_final_status}, actual ${result.actual_final_status}</p>
       <p><strong>Diagnosis:</strong> ${result.diagnosis_text}</p>
@@ -65,67 +120,98 @@ function renderEvaluationResults(results) {
 }
 
 document.addEventListener("click", async (event) => {
+  const passwordToggle = event.target.closest("[data-password-toggle]");
+  if (passwordToggle) {
+    const wrapper = passwordToggle.closest(".password-input");
+    const passwordInput = wrapper ? wrapper.querySelector("input[name='password']") : null;
+    if (passwordInput) {
+      const reveal = passwordInput.type === "password";
+      passwordInput.type = reveal ? "text" : "password";
+      passwordToggle.textContent = reveal ? "Hide" : "Show";
+      passwordToggle.setAttribute("aria-label", reveal ? "Hide password" : "Show password");
+    }
+    return;
+  }
+
   const runButton = event.target.closest("[data-run-agent]");
   if (runButton) {
-    runButton.disabled = true;
+    clearBanner();
+    setButtonLoading(runButton, "Running...");
     try {
+      showBanner("Running the incident agent. This can take a moment while the backend records reasoning, tools, and policy steps.");
       await postEmpty(`/api/incidents/${runButton.dataset.runAgent}/run-agent`);
+      showBanner("Agent run completed. Opening the incident detail view.", "success");
       window.location.href = `/incidents/${runButton.dataset.runAgent}`;
     } catch (error) {
-      alert(`Could not run agent: ${error.message}`);
-      runButton.disabled = false;
+      showBanner(`Could not run agent. ${error.message}`, "error");
+      resetButtonLoading(runButton);
     }
     return;
   }
 
   const demoButton = event.target.closest("[data-demo-scenario]");
   if (demoButton) {
-    demoButton.disabled = true;
+    clearBanner();
+    setButtonLoading(demoButton, "Launching...");
     try {
+      showBanner("Creating the seeded incident. Next step: open the incident detail page and run the agent.");
       const incident = await postEmpty(`/api/demo/incidents/${demoButton.dataset.demoScenario}`);
-      window.location.href = `/incidents/${incident.id}`;
+      showBanner("Demo incident created. Opening incident detail.", "success");
+      window.location.href = `/incidents/${incident.id}?from_demo=1`;
     } catch (error) {
-      alert(`Could not create demo incident: ${error.message}`);
-      demoButton.disabled = false;
+      showBanner(`Could not create demo incident. ${error.message}`, "error");
+      resetButtonLoading(demoButton);
     }
     return;
   }
 
   const approveButton = event.target.closest("[data-approve-id]");
   if (approveButton) {
-    approveButton.disabled = true;
+    clearBanner();
+    setButtonLoading(approveButton, "Approving...");
     try {
+      showBanner("Approving the risky remediation and waiting for the backend to record the execution path.");
       await postJson(`/api/approvals/${approveButton.dataset.approveId}/approve`, {
-        approved_by: "dashboard.operator",
+        approved_by: getCurrentUserName(),
       });
-      window.location.reload();
+      showBanner("Approval recorded successfully.", "success");
+      window.setTimeout(() => window.location.reload(), 500);
     } catch (error) {
-      alert(`Could not approve action: ${error.message}`);
-      approveButton.disabled = false;
+      showBanner(`Could not approve action. ${error.message}`, "error");
+      resetButtonLoading(approveButton);
     }
     return;
   }
 
   const rejectButton = event.target.closest("[data-reject-id]");
   if (rejectButton) {
-    rejectButton.disabled = true;
+    clearBanner();
+    setButtonLoading(rejectButton, "Rejecting...");
     try {
+      showBanner("Rejecting the risky remediation request.");
       await postJson(`/api/approvals/${rejectButton.dataset.rejectId}/reject`, {
-        approved_by: "dashboard.operator",
+        approved_by: getCurrentUserName(),
       });
-      window.location.reload();
+      showBanner("Rejection recorded successfully.", "success");
+      window.setTimeout(() => window.location.reload(), 500);
     } catch (error) {
-      alert(`Could not reject action: ${error.message}`);
-      rejectButton.disabled = false;
+      showBanner(`Could not reject action. ${error.message}`, "error");
+      resetButtonLoading(rejectButton);
     }
     return;
   }
 
   const evalButton = event.target.closest("[data-run-evals]");
   if (evalButton) {
-    evalButton.disabled = true;
+    clearBanner();
+    setButtonLoading(evalButton, "Running...");
     try {
       const target = evalButton.dataset.runEvals;
+      showBanner(
+        target === "all"
+          ? "Running the full evaluation suite against the real backend workflow."
+          : `Running evaluation scenario: ${target}.`,
+      );
       const response = target === "all"
         ? await postEmpty("/api/evals/run")
         : await postEmpty(`/api/evals/run/${target}`);
@@ -135,10 +221,34 @@ document.addEventListener("click", async (event) => {
       const results = target === "all" ? response.results : [response];
       renderEvaluationSummary(summary);
       renderEvaluationResults(results);
+      showBanner("Evaluation results updated below.", "success");
     } catch (error) {
-      alert(`Could not run evaluations: ${error.message}`);
+      showBanner(`Could not run evaluations. ${error.message}`, "error");
     } finally {
-      evalButton.disabled = false;
+      resetButtonLoading(evalButton);
     }
+  }
+});
+
+document.addEventListener("submit", async (event) => {
+  const loginForm = event.target.closest("#login-form");
+  if (!loginForm) {
+    return;
+  }
+  event.preventDefault();
+  clearBanner();
+  const submitButton = loginForm.querySelector("[data-login-submit]");
+  const formData = new FormData(loginForm);
+  const email = String(formData.get("email") || "");
+  const password = String(formData.get("password") || "");
+  setButtonLoading(submitButton, "Signing in...");
+  try {
+    showBanner("Signing in and creating a dashboard session.");
+    await loginWithPassword(email, password);
+    showBanner("Login successful. Redirecting to the dashboard.", "success");
+    window.location.href = loginForm.dataset.nextPath || "/";
+  } catch (error) {
+    showBanner(`Could not sign in. ${error.message}`, "error");
+    resetButtonLoading(submitButton);
   }
 });

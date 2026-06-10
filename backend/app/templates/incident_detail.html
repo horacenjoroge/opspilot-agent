@@ -14,15 +14,98 @@
   </div>
 </section>
 
+{% if request.query_params.get('from_demo') %}
+<section class="callout callout-accent">
+  <strong>Next step:</strong> Run the agent, then review the policy decision and approval flow below.
+</section>
+{% endif %}
+
+<section class="detail-grid tri-grid">
+  <article class="panel">
+    <h3>Incident Summary</h3>
+    <dl class="meta-grid">
+      <div><dt>Status</dt><dd>{{ incident.status.value }}</dd></div>
+      <div><dt>Severity</dt><dd>{{ incident.severity.value }}</dd></div>
+      <div><dt>Source</dt><dd>{{ incident.source }}</dd></div>
+      <div><dt>Incident ID</dt><dd>#{{ incident.id }}</dd></div>
+    </dl>
+  </article>
+  <article class="panel">
+    <h3>Agent Reasoning</h3>
+    <p>{{ diagnosis_item.details.model_summary if diagnosis_item else "The agent reasoning summary will appear after triage and diagnosis complete." }}</p>
+    <p class="section-note">OpsPilot stores the model reasoning, tool steps, approvals, and remediation path as timeline evidence instead of treating the run like a chat transcript.</p>
+  </article>
+  <article class="panel">
+    <h3>Approval State</h3>
+    {% if approval_groups.pending %}
+    <p>Risky remediation is waiting for human approval.</p>
+    {% elif approval_groups.approved %}
+    <p>At least one risky action has been approved.</p>
+    {% elif approval_groups.rejected %}
+    <p>A risky action was rejected. Review the timeline for the exact decision path.</p>
+    {% else %}
+    <p>No approval gate has been triggered for this incident yet.</p>
+    {% endif %}
+  </article>
+</section>
+
 <section class="detail-grid">
   <article class="panel">
     <h3>Diagnosis</h3>
     <p>{{ incident.root_cause_summary or "No diagnosis recorded yet." }}</p>
   </article>
   <article class="panel">
-    <h3>Recommended Action</h3>
+    <h3>Recommended Remediation</h3>
     <p>{{ incident.recommended_action or "No recommended action yet." }}</p>
+    {% if remediation_item %}
+    <p class="section-note">Recommended by the agent during the remediation phase.</p>
+    {% endif %}
   </article>
+</section>
+
+<section class="panel">
+  <h3>Policy Decision</h3>
+  {% if policy_item %}
+  <div class="card-grid">
+    <article class="signal-card">
+      <span class="badge">Risk</span>
+      <p>{{ policy_item.details.output_json.risk_level if policy_item.details.output_json else "Not captured" }}</p>
+    </article>
+    <article class="signal-card">
+      <span class="badge">Approval Required</span>
+      <p>{{ policy_item.details.output_json.requires_approval if policy_item.details.output_json else "Not captured" }}</p>
+    </article>
+    <article class="signal-card">
+      <span class="badge">Action</span>
+      <p>{{ policy_item.details.output_json.action_name if policy_item.details.output_json else incident.recommended_action or "Not captured" }}</p>
+    </article>
+  </div>
+  <p class="section-note">{{ policy_item.details.model_summary or "Backend risk policy decision recorded in timeline." }}</p>
+  {% else %}
+  <p>No policy decision has been recorded yet.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-header">
+    <h3>Evidence Collected</h3>
+    <span class="badge neutral">{{ evidence_items | length }} tool steps</span>
+  </div>
+  <div class="card-grid">
+    {% for item in evidence_items %}
+    <article class="evidence-card">
+      <div class="card-header">
+        <strong>{{ item.label }}</strong>
+        <span class="badge {% if item.status != 'success' %}neutral{% endif %}">{{ item.status }}</span>
+      </div>
+      <p>{{ item.details.model_summary or "No summary recorded." }}</p>
+      <p class="mini-meta">Tool name: {{ item.details.tool_name or item.label }}</p>
+      <pre>{{ (item.details.output_json or item.details.input_json or item.details) | tojson(indent=2) }}</pre>
+    </article>
+    {% else %}
+    <p>No evidence has been collected yet.</p>
+    {% endfor %}
+  </div>
 </section>
 
 <section class="panel">
@@ -47,8 +130,33 @@
 </section>
 
 <section class="panel">
+  <h3>Saved Memory</h3>
+  {% if saved_memory %}
+  <article class="approval-card">
+    <div>
+      <strong>{{ saved_memory.incident_type }}</strong>
+      <p>{{ saved_memory.root_cause }}</p>
+      <p><strong>Successful fix:</strong> {{ saved_memory.successful_fix or "Not recorded" }}</p>
+      <p><strong>Failed fix:</strong> {{ saved_memory.failed_fix or "Not recorded" }}</p>
+    </div>
+    <div class="approval-meta">
+      <span class="badge">{{ saved_memory.confidence }}</span>
+      <span class="badge neutral">saved for reuse</span>
+    </div>
+  </article>
+  {% elif memory_saved_item %}
+  <p>Memory save event recorded, but no expanded memory record was available in this view.</p>
+  {% else %}
+  <p>No reusable memory has been saved for this incident yet.</p>
+  {% endif %}
+</section>
+
+<section class="panel">
   <h3>Final Report</h3>
   <p>{{ incident.final_report or "The final report will appear here once the incident is resolved." }}</p>
+  {% if final_report_item %}
+  <p class="section-note">{{ final_report_item.details.model_summary or "Final report generated." }}</p>
+  {% endif %}
 </section>
 
 <section class="panel">
@@ -62,6 +170,7 @@
       <div>
         <strong>{{ approval.action_name }}</strong>
         <p>{{ approval.reason }}</p>
+        <p><strong>Expected impact:</strong> {{ approval.expected_impact }}</p>
       </div>
       <div class="approval-meta">
         <span class="badge">{{ approval.risk_level.value }}</span>
@@ -76,17 +185,32 @@
 
 <section class="panel">
   <h3>Timeline</h3>
+  <p class="section-note">Each card below is a stored agent or approval event. Request IDs and latency are shown when captured; otherwise the UI shows graceful MVP fallbacks.</p>
   <div class="timeline">
     {% for item in timeline %}
-    <article class="timeline-item">
+    {% set output = item.details.output_json or {} %}
+    {% set trace_id = item.details.request_id or output.request_id or "Not captured" %}
+    {% set duration = item.details.duration_ms or output.duration_ms or "Not captured" %}
+    {% set summary = item.details.model_summary or output.summary or "No human summary was captured for this event." %}
+    <article class="timeline-item timeline-card">
       <div class="timeline-dot"></div>
       <div class="timeline-body">
         <div class="timeline-head">
-          <strong>{{ item.label }}</strong>
+          <div>
+            <p class="eyebrow">{{ item.category.replace("_", " ") }}</p>
+            <strong>{{ item.label.replace("_", " ").title() }}</strong>
+          </div>
           <span>{{ item.occurred_at }}</span>
         </div>
-        <p class="timeline-meta">{{ item.category }} • {{ item.status }}</p>
-        <pre>{{ item.details | tojson(indent=2) }}</pre>
+        <div class="timeline-tags">
+          <span class="badge {% if item.status != 'success' and item.status != 'recorded' %}neutral{% endif %}">{{ item.status }}</span>
+          <span class="badge neutral">Phase: {{ item.label }}</span>
+          <span class="badge neutral">Tool: {{ item.details.tool_name or "Not applicable" }}</span>
+          <span class="badge neutral">Request ID: {{ trace_id }}</span>
+          <span class="badge neutral">Latency: {{ duration }}</span>
+        </div>
+        <p class="timeline-meta">{{ summary }}</p>
+        <pre>{{ (output or item.details) | tojson(indent=2) }}</pre>
       </div>
     </article>
     {% else %}

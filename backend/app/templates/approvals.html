@@ -8,28 +8,87 @@
       <h2>Approval Queue</h2>
     </div>
   </div>
-  <div class="stack">
-    {% for approval in approvals %}
-    <article class="approval-card wide">
-      <div>
-        <div class="approval-head">
-          <strong>{{ approval.action_name }}</strong>
-          <span class="badge">{{ approval.risk_level.value }}</span>
-          <span class="badge neutral">{{ approval.status.value }}</span>
+  <p class="section-note">This page proves the backend, not the model, decides whether a recommended remediation can proceed.</p>
+</section>
+
+<section class="detail-grid tri-grid">
+  <article class="panel">
+    <div class="panel-header">
+      <h3>Pending</h3>
+      <span class="badge">{{ approval_groups.pending | length }}</span>
+    </div>
+    <div class="stack">
+      {% for approval in approval_groups.pending %}
+      <article class="approval-card wide">
+        <div class="approval-body">
+          <div class="approval-head">
+            <strong>{{ approval.action_name }}</strong>
+            <span class="badge">{{ approval.risk_level.value }}</span>
+            <span class="badge neutral">{{ approval.status.value }}</span>
+          </div>
+          <p>{{ approval.reason }}</p>
+          <p><strong>Incident:</strong> <a href="/incidents/{{ approval.incident_id }}">#{{ approval.incident_id }}</a></p>
+          <p><strong>Expected impact:</strong> {{ approval.expected_impact }}</p>
+          <p><strong>Rollback:</strong> {{ approval.rollback_plan }}</p>
         </div>
-        <p>{{ approval.reason }}</p>
-        <p><strong>Expected impact:</strong> {{ approval.expected_impact }}</p>
-        <p><strong>Rollback:</strong> {{ approval.rollback_plan }}</p>
-      </div>
-      <div class="action-row">
-        <button class="button primary small" data-approve-id="{{ approval.id }}">Approve</button>
-        <button class="button danger small" data-reject-id="{{ approval.id }}">Reject</button>
-        <a class="button ghost small" href="/incidents/{{ approval.incident_id }}">View incident</a>
-      </div>
-    </article>
-    {% else %}
-    <p>No approval requests are waiting right now.</p>
-    {% endfor %}
-  </div>
+        <div class="action-row approval-actions">
+          <button class="button primary small" data-approve-id="{{ approval.id }}">Approve</button>
+          <button class="button danger small" data-reject-id="{{ approval.id }}">Reject</button>
+          <a class="button ghost small" href="/incidents/{{ approval.incident_id }}">View incident</a>
+        </div>
+      </article>
+      {% else %}
+      <p>No approval requests are waiting right now.</p>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="panel-header">
+      <h3>Approved</h3>
+      <span class="badge neutral">{{ approval_groups.approved | length }}</span>
+    </div>
+    <div class="stack">
+      {% for approval in approval_groups.approved %}
+      <article class="approval-card">
+        <div class="approval-body">
+          <strong>{{ approval.action_name }}</strong>
+          <p>{{ approval.reason }}</p>
+          <p><strong>Incident:</strong> <a href="/incidents/{{ approval.incident_id }}">#{{ approval.incident_id }}</a></p>
+        </div>
+        <div class="approval-meta">
+          <span class="badge">{{ approval.risk_level.value }}</span>
+          <span class="badge neutral">approved</span>
+        </div>
+      </article>
+      {% else %}
+      <p>No approved requests yet.</p>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel">
+    <div class="panel-header">
+      <h3>Rejected</h3>
+      <span class="badge neutral">{{ approval_groups.rejected | length }}</span>
+    </div>
+    <div class="stack">
+      {% for approval in approval_groups.rejected %}
+      <article class="approval-card">
+        <div class="approval-body">
+          <strong>{{ approval.action_name }}</strong>
+          <p>{{ approval.reason }}</p>
+          <p><strong>Incident:</strong> <a href="/incidents/{{ approval.incident_id }}">#{{ approval.incident_id }}</a></p>
+        </div>
+        <div class="approval-meta">
+          <span class="badge">{{ approval.risk_level.value }}</span>
+          <span class="badge neutral">rejected</span>
+        </div>
+      </article>
+      {% else %}
+      <p>No rejected requests yet.</p>
+      {% endfor %}
+    </div>
+  </article>
 </section>
 {% endblock %}
