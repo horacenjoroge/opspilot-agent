@@ -1,7 +1,10 @@
+import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
+
+logger = logging.getLogger("opspilot.api")
 
 from app.agents.incident_agent import IncidentAgent
 from app.api.auth_dependencies import OPERATOR_ROLES, READ_ROLES, require_roles
@@ -10,6 +13,7 @@ from app.schemas.common import AgentRunResponse, ErrorResponse
 from app.schemas.incident import IncidentCreate, IncidentListResponse, IncidentRead, IncidentUpdateStatus
 from app.schemas.enums import IncidentStatus, Severity
 from app.schemas.timeline import TimelineItem, TimelineListResponse
+from app.db.session import SessionLocal
 from app.services.incidents import IncidentNotFoundError, IncidentService
 from app.services.timeline import TimelineService
 
@@ -110,20 +114,30 @@ async def update_incident_status(
     return IncidentRead.model_validate(incident)
 
 
+async def _run_agent_background(incident_id: int) -> None:
+    db = SessionLocal()
+    try:
+        await IncidentAgent(db).run(incident_id)
+    except Exception as exc:
+        logger.error("Background agent run failed for incident %d: %s", incident_id, exc)
+    finally:
+        db.close()
+
+
 @router.post(
     "/{incident_id}/run-agent",
     response_model=AgentRunResponse,
-    status_code=status.HTTP_200_OK,
+    status_code=status.HTTP_202_ACCEPTED,
     summary="Run incident agent",
     description=(
-        "Execute the backend-controlled incident workflow. The agent performs Qwen-backed triage, "
-        "tool selection, evidence gathering, diagnosis, remediation recommendation, policy evaluation, "
-        "and final reporting or approval creation."
+        "Enqueues the incident agent workflow as a background task and returns immediately. "
+        "Poll GET /api/incidents/{incident_id} until status is no longer 'triaging' to get the result."
     ),
     responses={404: {"model": ErrorResponse, "description": "Incident was not found."}},
 )
 async def run_incident_agent(
     incident_id: int,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db_session),
     _: object = Depends(require_roles(*OPERATOR_ROLES)),
 ) -> AgentRunResponse:
@@ -131,7 +145,8 @@ async def run_incident_agent(
         IncidentService(db).get_incident(incident_id)
     except IncidentNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
-    return AgentRunResponse.model_validate(await IncidentAgent(db).run(incident_id))
+    background_tasks.add_task(_run_agent_background, incident_id)
+    return AgentRunResponse(incident_id=incident_id, status="triaging", recommended_action=None)
 
 
 @router.get(

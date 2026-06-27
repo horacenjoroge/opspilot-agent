@@ -119,6 +119,25 @@ function renderEvaluationResults(results) {
   }
 }
 
+async function pollIncidentStatus(incidentId, intervalMs = 3000, maxWaitMs = 300000) {
+  const deadline = Date.now() + maxWaitMs;
+  while (Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    try {
+      const response = await fetch(`/api/incidents/${incidentId}`);
+      if (response.ok) {
+        const incident = await response.json();
+        if (incident.status && incident.status !== "triaging") {
+          return incident.status;
+        }
+      }
+    } catch (_) {
+      // network blip — keep polling
+    }
+  }
+  return "unknown";
+}
+
 document.addEventListener("click", async (event) => {
   const passwordToggle = event.target.closest("[data-password-toggle]");
   if (passwordToggle) {
@@ -136,12 +155,14 @@ document.addEventListener("click", async (event) => {
   const runButton = event.target.closest("[data-run-agent]");
   if (runButton) {
     clearBanner();
+    const incidentId = runButton.dataset.runAgent;
     setButtonLoading(runButton, "Running...");
     try {
-      showBanner("Running the incident agent. This can take a moment while the backend records reasoning, tools, and policy steps.");
-      await postEmpty(`/api/incidents/${runButton.dataset.runAgent}/run-agent`);
+      await postEmpty(`/api/incidents/${incidentId}/run-agent`);
+      showBanner("Agent started — investigating the incident. Results will appear in a moment…");
+      const finalStatus = await pollIncidentStatus(incidentId);
       showBanner("Agent run completed. Opening the incident detail view.", "success");
-      window.location.href = `/incidents/${runButton.dataset.runAgent}`;
+      window.location.href = `/incidents/${incidentId}?agent_just_ran=${finalStatus}`;
     } catch (error) {
       showBanner(`Could not run agent. ${error.message}`, "error");
       resetButtonLoading(runButton);

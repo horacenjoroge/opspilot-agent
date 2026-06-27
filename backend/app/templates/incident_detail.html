@@ -20,6 +20,35 @@
 </section>
 {% endif %}
 
+{% set agent_just_ran = request.query_params.get('agent_just_ran') %}
+{% if agent_just_ran == 'waiting_for_approval' %}
+<section class="callout callout-warning">
+  <div>
+    <strong>Action required — human approval needed</strong>
+    <p>The agent found a risky remediation and is waiting for your approval before executing. Review the recommendation below, then approve or reject it on the Approvals board.</p>
+  </div>
+  <a class="button primary" href="/approvals">Go to Approvals board →</a>
+</section>
+{% elif agent_just_ran == 'resolved' %}
+<section class="callout callout-success">
+  <strong>Incident resolved</strong> — The agent completed remediation automatically. Review the timeline below to see the full evidence chain.
+</section>
+{% elif agent_just_ran and agent_just_ran != 'unknown' %}
+<section class="callout callout-accent">
+  <strong>Agent run complete</strong> — Status: <strong>{{ agent_just_ran }}</strong>. Review the timeline below for the full reasoning and evidence chain.
+</section>
+{% endif %}
+
+{% if incident.status.value == 'waiting_for_approval' and not agent_just_ran %}
+<section class="callout callout-warning">
+  <div>
+    <strong>Approval pending</strong>
+    <p>A risky remediation action is waiting for human approval before it can execute.</p>
+  </div>
+  <a class="button primary" href="/approvals">Go to Approvals board →</a>
+</section>
+{% endif %}
+
 <section class="detail-grid tri-grid">
   <article class="panel">
     <h3>Incident Summary</h3>
