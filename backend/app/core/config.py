@@ -31,6 +31,7 @@ class Settings(BaseSettings):
         default="qwen3.7-max",
         alias="QWEN_REASONING_MODEL",
     )
+    webhook_secret: str = Field(default="", alias="WEBHOOK_SECRET")
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -18,6 +18,7 @@ from app.api.routes_evaluations import router as evaluations_router
 from app.api.routes_health import router as health_router
 from app.api.routes_incidents import router as incidents_router
 from app.api.routes_metrics import router as metrics_router
+from app.api.routes_webhook_tokens import router as webhook_tokens_router
 from app.api.routes_webhooks import router as webhooks_router
 from app.core.config import get_settings
 from app.core.request_context import reset_request_id, set_request_id
@@ -87,6 +88,7 @@ def create_app() -> FastAPI:
     if settings.enable_metrics:
         app.include_router(metrics_router)
     app.include_router(webhooks_router)
+    app.include_router(webhook_tokens_router)
     return app
 
 

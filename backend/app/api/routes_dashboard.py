@@ -278,6 +278,25 @@ async def dashboard_evaluations(request: Request, db: Session = Depends(get_db_s
     )
 
 
+@router.get("/integrations", response_class=HTMLResponse)
+async def dashboard_integrations(request: Request, db: Session = Depends(get_db_session)) -> HTMLResponse:
+    redirect = _require_dashboard_access(request, db)
+    if redirect is not None:
+        return redirect
+    settings = get_settings()
+    base_url = str(request.base_url).rstrip("/")
+    token_configured = bool(settings.webhook_secret)
+    return templates.TemplateResponse(
+        request,
+        "integrations.html",
+        {
+            **_dashboard_context(request, db),
+            "base_url": base_url,
+            "token_configured": token_configured,
+        },
+    )
+
+
 @router.get("/architecture", response_class=HTMLResponse)
 async def dashboard_architecture(request: Request, db: Session = Depends(get_db_session)) -> HTMLResponse:
     redirect = _require_dashboard_access(request, db)

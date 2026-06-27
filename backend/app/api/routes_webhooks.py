@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.agents.incident_agent import IncidentAgent
@@ -10,10 +10,28 @@ from app.db.session import SessionLocal
 from app.schemas.enums import Severity
 from app.schemas.incident import IncidentCreate
 from app.services.incidents import IncidentService
+from app.services.webhook_tokens import WebhookTokenService
 
 logger = logging.getLogger("opspilot.webhooks")
 
 router = APIRouter(prefix="/api/webhooks", tags=["webhooks"])
+
+
+def _verify_token(
+    x_webhook_token: str | None = Header(default=None),
+    db: Session = Depends(get_db_session),
+) -> None:
+    if x_webhook_token is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="X-Webhook-Token header is required.",
+        )
+    record = WebhookTokenService(db).verify(x_webhook_token)
+    if record is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or revoked webhook token.",
+        )
 
 _SEVERITY_MAP: dict[str, Severity] = {
     "critical": Severity.critical,
@@ -55,6 +73,7 @@ async def ingest_alertmanager(
     background_tasks: BackgroundTasks,
     auto_run: bool = Query(default=False, description="Start the agent automatically after creating each incident."),
     db: Session = Depends(get_db_session),
+    _: None = Depends(_verify_token),
 ) -> dict[str, Any]:
     alerts = payload.get("alerts", [])
     created_ids: list[int] = []
@@ -105,6 +124,7 @@ async def ingest_generic(
     background_tasks: BackgroundTasks,
     auto_run: bool = Query(default=False, description="Start the agent automatically after creating the incident."),
     db: Session = Depends(get_db_session),
+    _: None = Depends(_verify_token),
 ) -> dict[str, Any]:
     title = payload.get("title") or payload.get("name") or payload.get("alertname") or "Unnamed Alert"
     severity_raw = str(payload.get("severity") or payload.get("level") or payload.get("priority") or "medium")

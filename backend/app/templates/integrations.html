@@ -1,0 +1,344 @@
+{% extends "base.html" %}
+{% block title %}OpsPilot Integrations{% endblock %}
+{% block content %}
+
+<section class="hero compact">
+  <div>
+    <p class="eyebrow">Developer Integration</p>
+    <h2>Connect your monitoring tools</h2>
+    <p class="lede">OpsPilot exposes webhook endpoints so any alerting tool can create incidents and trigger the agent automatically — no dashboard interaction required.</p>
+  </div>
+</section>
+
+<!-- ── Token management ─────────────────────────────────────────────────── -->
+<section class="panel" id="token-section">
+  <div class="panel-header">
+    <h3>Webhook tokens</h3>
+    <span class="badge">Authentication</span>
+  </div>
+  <p>Every webhook request must include an <code>X-Webhook-Token</code> header. Generate one token per integration so you can revoke access individually without breaking other consumers.</p>
+
+  <!-- New-token reveal (hidden until a token is created) -->
+  <div id="new-token-box" style="display:none;" class="callout callout-success" role="alert">
+    <div style="flex:1;min-width:0;">
+      <strong>Token created — save this now, it will not be shown again</strong>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap;">
+        <code id="new-token-value" style="word-break:break-all;flex:1;"></code>
+        <button class="button primary" id="copy-token-btn" onclick="copyToken()" style="white-space:nowrap;">Copy</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Create form -->
+  <form id="create-token-form" onsubmit="createToken(event)" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;">
+    <input
+      id="token-name-input"
+      type="text"
+      placeholder="Token name (e.g. grafana-prod, alertmanager-staging)"
+      required
+      minlength="2"
+      maxlength="80"
+      style="flex:1;min-width:180px;padding:8px 12px;border:1px solid var(--border);border-radius:4px;font-size:14px;background:var(--bg);color:var(--text);"
+    />
+    <button type="submit" class="button primary" id="generate-btn">Generate token</button>
+  </form>
+
+  <!-- Token list -->
+  <div id="token-list-wrap" style="margin-top:24px;">
+    <div class="table-wrap">
+      <table id="token-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Created by</th>
+            <th>Incidents</th>
+            <th>Last used</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="token-tbody">
+          <tr id="token-empty-row"><td colspan="6" style="color:var(--text-muted);text-align:center;">No tokens yet — generate one above.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- ── How it works ─────────────────────────────────────────────────────── -->
+<section class="detail-grid">
+  <article class="panel">
+    <h3>How it works</h3>
+    <ol class="plain-list numbered">
+      <li>Your monitoring tool sends an HTTP POST to one of the webhook endpoints below.</li>
+      <li>OpsPilot creates an incident from the payload automatically.</li>
+      <li>With <code>?auto_run=true</code>, the agent starts immediately — no human needed to trigger it.</li>
+      <li>If the agent recommends a risky action, it is blocked and an approval request is created.</li>
+      <li>Your team approves or rejects from the Approvals board or the REST API.</li>
+    </ol>
+  </article>
+
+  <article class="panel">
+    <h3>Authentication header</h3>
+    <p>Pass your token on every webhook request:</p>
+    <pre>X-Webhook-Token: opspilot_wh_&lt;your-token&gt;</pre>
+    <p>Each token is tied to a name. You can generate multiple tokens — one per integration — and revoke them independently.</p>
+    <p class="section-note">Tokens are hashed on write. The raw value is only shown once at creation time.</p>
+  </article>
+</section>
+
+<!-- ── Alertmanager ─────────────────────────────────────────────────────── -->
+<section class="panel">
+  <div class="panel-header">
+    <h3>Prometheus Alertmanager</h3>
+    <span class="badge">Recommended</span>
+  </div>
+  <p>Add a receiver to your <code>alertmanager.yml</code>. Each firing alert becomes one incident. Pass <code>auto_run=true</code> to start the agent without any manual step.</p>
+  <pre>receivers:
+  - name: opspilot
+    webhook_configs:
+      - url: '{{ base_url }}/api/webhooks/alertmanager?auto_run=true'
+        headers:
+          X-Webhook-Token: 'opspilot_wh_your-token-here'
+        send_resolved: false
+
+route:
+  receiver: opspilot
+  group_wait: 10s
+  group_interval: 5m
+  repeat_interval: 1h</pre>
+  <p class="section-note">Set <code>send_resolved: false</code> so OpsPilot only receives firing alerts, not resolution events.</p>
+</section>
+
+<!-- ── Grafana ──────────────────────────────────────────────────────────── -->
+<section class="panel">
+  <div class="panel-header">
+    <h3>Grafana Alerts</h3>
+    <span class="badge neutral">Generic webhook</span>
+  </div>
+  <p>In Grafana, go to <strong>Alerting → Contact points → Add contact point</strong>. Choose <strong>Webhook</strong> and use the URL below.</p>
+  <pre>URL:    {{ base_url }}/api/webhooks/generic?auto_run=true
+Method: POST
+Header: X-Webhook-Token = opspilot_wh_your-token-here</pre>
+  <p>Grafana alert payload is automatically mapped:</p>
+  <div class="card-grid">
+    <article class="signal-card">
+      <span class="badge neutral">Grafana field</span>
+      <p><code>title</code> or <code>ruleName</code></p>
+    </article>
+    <article class="signal-card">
+      <span class="badge neutral">→ OpsPilot field</span>
+      <p><code>title</code></p>
+    </article>
+    <article class="signal-card">
+      <span class="badge neutral">Grafana field</span>
+      <p><code>severity</code> or <code>level</code></p>
+    </article>
+    <article class="signal-card">
+      <span class="badge neutral">→ OpsPilot field</span>
+      <p><code>severity</code> (critical / high / medium / low)</p>
+    </article>
+  </div>
+</section>
+
+<!-- ── Generic curl ─────────────────────────────────────────────────────── -->
+<section class="panel">
+  <h3>Generic webhook — any tool</h3>
+  <p>Any tool that can send JSON over HTTP works. The minimal required payload is:</p>
+  <pre>{
+  "title": "Memory spike on worker-3",
+  "severity": "high",
+  "description": "RSS over 90% for 10 minutes on worker-3.",
+  "source": "datadog"
+}</pre>
+  <p>Test it now from your terminal:</p>
+  <pre>curl -X POST "{{ base_url }}/api/webhooks/generic?auto_run=true" \
+  -H "Content-Type: application/json" \
+  -H "X-Webhook-Token: opspilot_wh_your-token-here" \
+  -d '{
+    "title": "Memory spike on worker-3",
+    "severity": "high",
+    "description": "RSS over 90% for 10 minutes on worker-3.",
+    "source": "datadog"
+  }'</pre>
+  <p>Response:</p>
+  <pre>{"incident_id": 7, "status": "triaging", "auto_run": true, "view_url": "/incidents/7"}</pre>
+</section>
+
+<!-- ── REST API ──────────────────────────────────────────────────────────── -->
+<section class="panel">
+  <h3>REST API — full programmatic control</h3>
+  <p>Every action available in the dashboard is also available via the REST API. The interactive API docs are at <a href="/docs" target="_blank">{{ base_url }}/docs</a>.</p>
+  <div class="card-grid">
+    <article class="signal-card">
+      <span class="badge">POST</span>
+      <p><code>/api/incidents</code></p>
+      <p class="section-note">Create an incident manually.</p>
+    </article>
+    <article class="signal-card">
+      <span class="badge">POST</span>
+      <p><code>/api/incidents/{id}/run-agent</code></p>
+      <p class="section-note">Trigger the agent. Returns immediately, agent runs in background.</p>
+    </article>
+    <article class="signal-card">
+      <span class="badge">GET</span>
+      <p><code>/api/incidents/{id}</code></p>
+      <p class="section-note">Poll for agent completion. Status changes from <code>triaging</code> when done.</p>
+    </article>
+    <article class="signal-card">
+      <span class="badge">POST</span>
+      <p><code>/api/approvals/{id}/approve</code></p>
+      <p class="section-note">Approve a risky action programmatically (e.g. from Slack bot or CLI).</p>
+    </article>
+  </div>
+</section>
+
+<!-- ── Severity mapping ─────────────────────────────────────────────────── -->
+<section class="panel">
+  <h3>Severity mapping</h3>
+  <p>Incoming severity strings are normalised to OpsPilot's four levels automatically:</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Incoming value</th><th>OpsPilot severity</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>critical</code></td><td>critical</td></tr>
+        <tr><td><code>high</code>, <code>error</code></td><td>high</td></tr>
+        <tr><td><code>warning</code>, <code>warn</code>, <code>medium</code></td><td>medium</td></tr>
+        <tr><td><code>low</code>, <code>info</code></td><td>low</td></tr>
+        <tr><td>anything else</td><td>medium (default)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<script>
+(function () {
+  // ── helpers ──────────────────────────────────────────────────────────────
+  function fmtDate(iso) {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    return d.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  }
+
+  function setLoading(btn, loading) {
+    btn.disabled = loading;
+    btn.textContent = loading ? "Generating…" : "Generate token";
+  }
+
+  // ── render token list ────────────────────────────────────────────────────
+  function renderTokens(tokens) {
+    const tbody = document.getElementById("token-tbody");
+    if (!tokens || tokens.length === 0) {
+      tbody.innerHTML = '<tr id="token-empty-row"><td colspan="6" style="color:var(--text-muted);text-align:center;">No tokens yet — generate one above.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = tokens.map((t) => `
+      <tr id="token-row-${t.id}">
+        <td><strong>${escHtml(t.name)}</strong></td>
+        <td>${escHtml(t.created_by)}</td>
+        <td>${t.incident_count}</td>
+        <td>${fmtDate(t.last_used_at)}</td>
+        <td>
+          ${t.active
+            ? '<span class="badge">active</span>'
+            : '<span class="badge neutral">revoked</span>'}
+        </td>
+        <td>
+          ${t.active
+            ? `<button class="button small danger" onclick="revokeToken(${t.id}, this)">Revoke</button>`
+            : ""}
+        </td>
+      </tr>`).join("");
+  }
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  // ── load tokens on page load ─────────────────────────────────────────────
+  async function loadTokens() {
+    try {
+      const res = await fetch("/api/webhook-tokens");
+      if (!res.ok) return;
+      const tokens = await res.json();
+      renderTokens(tokens);
+    } catch (_) {}
+  }
+
+  // ── create token ─────────────────────────────────────────────────────────
+  window.createToken = async function (evt) {
+    evt.preventDefault();
+    const nameInput = document.getElementById("token-name-input");
+    const btn = document.getElementById("generate-btn");
+    const name = nameInput.value.trim();
+    if (!name) return;
+
+    setLoading(btn, true);
+    try {
+      const res = await fetch("/api/webhook-tokens", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, created_by: "admin" }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert("Failed to create token: " + (err.detail || res.status));
+        return;
+      }
+      const data = await res.json();
+
+      // Show the token once
+      const box = document.getElementById("new-token-box");
+      const val = document.getElementById("new-token-value");
+      val.textContent = data.token;
+      box.style.display = "flex";
+      box.scrollIntoView({ behavior: "smooth", block: "nearest" });
+
+      nameInput.value = "";
+      await loadTokens();
+    } finally {
+      setLoading(btn, false);
+    }
+  };
+
+  // ── copy token ───────────────────────────────────────────────────────────
+  window.copyToken = function () {
+    const val = document.getElementById("new-token-value").textContent;
+    navigator.clipboard.writeText(val).then(() => {
+      const btn = document.getElementById("copy-token-btn");
+      btn.textContent = "Copied!";
+      setTimeout(() => { btn.textContent = "Copy"; }, 2000);
+    });
+  };
+
+  // ── revoke token ─────────────────────────────────────────────────────────
+  window.revokeToken = async function (id, btn) {
+    if (!confirm("Revoke this token? Any webhook using it will stop working immediately.")) return;
+    btn.disabled = true;
+    btn.textContent = "Revoking…";
+    try {
+      const res = await fetch(`/api/webhook-tokens/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        alert("Failed to revoke token.");
+        btn.disabled = false;
+        btn.textContent = "Revoke";
+        return;
+      }
+      await loadTokens();
+    } catch (_) {
+      btn.disabled = false;
+      btn.textContent = "Revoke";
+    }
+  };
+
+  loadTokens();
+})();
+</script>
+
+{% endblock %}
