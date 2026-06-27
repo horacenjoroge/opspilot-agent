@@ -73,10 +73,14 @@ class IncidentAgent:
             incident = self.incident_service.update_status(incident_id, IncidentStatus.triaging)
             scenario = self._extract_scenario(incident.source, incident.description)
 
+            triage_tools = [
+                "deployment_tool", "health_tool", "logs_tool", "metrics_tool", "runbook_tool"
+            ]
             triage, triage_status = await self._generate_triage(
                 incident_title=incident.title,
                 incident_description=incident.description,
                 source=incident.source,
+                allowed_tools=triage_tools,
             )
             self._record_step(
                 incident_id=incident_id,
@@ -304,6 +308,7 @@ class IncidentAgent:
         incident_title: str,
         incident_description: str,
         source: str,
+        allowed_tools: list[str],
     ) -> tuple[TriageDecision, ToolStatus]:
         try:
             payload = await self.provider.generate_json(
@@ -312,11 +317,11 @@ class IncidentAgent:
                     incident_title=incident_title,
                     incident_description=incident_description,
                     source=source,
-                    allowed_tools=self.registry.list_tools(),
+                    allowed_tools=allowed_tools,
                 ),
                 schema_name="triage",
             )
-            triage = parse_triage_output(payload, allowed_tools=set(self.registry.list_tools()))
+            triage = parse_triage_output(payload, allowed_tools=set(allowed_tools))
             return triage, ToolStatus.success
         except QwenClientError as exc:
             logger.error("Qwen triage call failed: %s — %s", exc.kind, exc.message)
