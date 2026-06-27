@@ -7,7 +7,7 @@ from sqlalchemy.schema import CreateColumn
 from app.db.base import Base
 
 
-HEAD_REVISION = "0003_agent_step_title"
+HEAD_REVISION = "0004_webhook_tokens"
 
 
 def _is_sqlite(connection: Connection) -> bool:

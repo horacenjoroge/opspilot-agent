@@ -18,7 +18,7 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expi
 
 
 def init_db() -> None:
-    from app.models import approval, agent_step, audit_log, evaluation, incident, incident_memory, user  # noqa: F401
+    from app.models import approval, agent_step, audit_log, evaluation, incident, incident_memory, user, webhook_token  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
     with engine.begin() as connection:
