@@ -86,8 +86,8 @@ def _dashboard_context(request: Request, db: Session) -> dict:
         "current_user_name": auth_context.display_name,
         "current_user_role": auth_context.role.value,
         "banner_text": (
-            f"{app_display_name} · Provider: {provider_label} · "
-            "Tools: Controlled infrastructure adapters · Human approval enabled"
+            f"OpsPilot — SRE Autopilot Agent · Qwen Cloud Hackathon Track 4 · "
+            f"Provider: {provider_label} · Tool allowlist enforced · Approval gate active"
         ),
     }
 
@@ -140,18 +140,18 @@ async def dashboard_home(request: Request, db: Session = Depends(get_db_session)
             "counts": counts,
             "recent_incidents": incidents[:5],
             "how_to_use_steps": [
-                "Launch the recommended incident scenario.",
-                "Open the incident detail page and run the agent.",
-                "Review the reasoning, evidence, and policy decision.",
-                "Approve a risky action if requested.",
-                "Open evaluations to verify the workflow across the seeded scenarios.",
+                "Go to Demo and create the high_api_error_rate incident.",
+                "Open the incident and click Run Agent — Qwen triages and collects evidence.",
+                "Watch the backend classify the recommended action as dangerous and block it.",
+                "Go to Approvals and approve or reject the blocked action.",
+                "Go to Evaluations and run the full suite to see structured pass/fail checks.",
             ],
             "recommended_flow": [
-                "Create `high_api_error_rate` from the scenarios page.",
-                "Run the agent and inspect timeline cards.",
-                "Approve the risky remediation from the approvals board.",
-                "Return to the incident page for final report and saved memory.",
-                "Run evaluations to compare the same backend workflow across seeded scenarios.",
+                "The model never calls a tool directly — the backend allowlist decides what runs.",
+                "Risk classification (safe / medium / dangerous) is enforced by policy, not the model.",
+                "Dangerous actions create an approval request; the model cannot bypass this gate.",
+                "Every triage step, tool call, policy decision, and approval is stored as a timeline event.",
+                "Evaluations replay the same workflow and assert expected severity, tools, and final status.",
             ],
         },
     )
