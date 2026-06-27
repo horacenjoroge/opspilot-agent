@@ -119,10 +119,11 @@ function renderEvaluationResults(results) {
   }
 }
 
-async function pollIncidentStatus(incidentId, intervalMs = 3000, maxWaitMs = 300000) {
+async function pollIncidentStatus(incidentId, onTick, intervalMs = 3000, maxWaitMs = 300000) {
   const deadline = Date.now() + maxWaitMs;
   while (Date.now() < deadline) {
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    if (onTick) onTick();
     try {
       const response = await fetch(`/api/incidents/${incidentId}`);
       if (response.ok) {
@@ -157,12 +158,18 @@ document.addEventListener("click", async (event) => {
     clearBanner();
     const incidentId = runButton.dataset.runAgent;
     setButtonLoading(runButton, "Running...");
+    const startTime = Date.now();
+    const elapsed = () => Math.floor((Date.now() - startTime) / 1000);
+    const fmtTime = (s) => s >= 60 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${s}s`;
     try {
       await postEmpty(`/api/incidents/${incidentId}/run-agent`);
-      showBanner("Agent started — investigating the incident. Results will appear in a moment…");
-      const finalStatus = await pollIncidentStatus(incidentId);
-      showBanner("Agent run completed. Opening the incident detail view.", "success");
-      window.location.href = `/incidents/${incidentId}?agent_just_ran=${finalStatus}`;
+      showBanner(`Agent started — Qwen is triaging the incident. (0s elapsed)`);
+      const finalStatus = await pollIncidentStatus(incidentId, () => {
+        showBanner(`Agent running — Qwen is reasoning through triage, evidence, and remediation. (${fmtTime(elapsed())} elapsed)`);
+      });
+      const totalSeconds = elapsed();
+      showBanner(`Agent completed in ${fmtTime(totalSeconds)}. Opening incident detail…`, "success");
+      window.location.href = `/incidents/${incidentId}?agent_just_ran=${finalStatus}&elapsed=${totalSeconds}`;
     } catch (error) {
       showBanner(`Could not run agent. ${error.message}`, "error");
       resetButtonLoading(runButton);
