@@ -21,21 +21,23 @@
 {% endif %}
 
 {% set agent_just_ran = request.query_params.get('agent_just_ran') %}
+{% set elapsed_raw = request.query_params.get('elapsed') | int(0) %}
+{% set elapsed = ((elapsed_raw // 60) ~ "m " ~ (elapsed_raw % 60) ~ "s") if elapsed_raw >= 60 else (elapsed_raw ~ "s") if elapsed_raw > 0 else None %}
 {% if agent_just_ran == 'waiting_for_approval' %}
 <section class="callout callout-warning">
   <div>
-    <strong>Action required — human approval needed</strong>
+    <strong>Action required — human approval needed{% if elapsed %} · completed in {{ elapsed }}{% endif %}</strong>
     <p>The agent found a risky remediation and is waiting for your approval before executing. Review the recommendation below, then approve or reject it on the Approvals board.</p>
   </div>
   <a class="button primary" href="/approvals">Go to Approvals board →</a>
 </section>
 {% elif agent_just_ran == 'resolved' %}
 <section class="callout callout-success">
-  <strong>Incident resolved</strong> — The agent completed remediation automatically. Review the timeline below to see the full evidence chain.
+  <strong>Incident resolved{% if elapsed %} in {{ elapsed }}s{% endif %}</strong> — The agent completed remediation automatically. Review the timeline below to see the full evidence chain.
 </section>
 {% elif agent_just_ran and agent_just_ran != 'unknown' %}
 <section class="callout callout-accent">
-  <strong>Agent run complete</strong> — Status: <strong>{{ agent_just_ran }}</strong>. Review the timeline below for the full reasoning and evidence chain.
+  <strong>Agent run complete{% if elapsed %} in {{ elapsed }}s{% endif %}</strong> — Status: <strong>{{ agent_just_ran }}</strong>. Review the timeline below for the full reasoning and evidence chain.
 </section>
 {% endif %}
 
@@ -53,9 +55,9 @@
   <article class="panel">
     <h3>Incident Summary</h3>
     <dl class="meta-grid">
-      <div><dt>Status</dt><dd>{{ incident.status.value }}</dd></div>
+      <div><dt>Status</dt><dd>{{ incident.status.value | replace("_", " ") }}</dd></div>
       <div><dt>Severity</dt><dd>{{ incident.severity.value }}</dd></div>
-      <div><dt>Source</dt><dd>{{ incident.source }}</dd></div>
+      <div><dt>Source</dt><dd>{{ incident.source | replace("_", " ") }}</dd></div>
       <div><dt>Incident ID</dt><dd>#{{ incident.id }}</dd></div>
     </dl>
   </article>
