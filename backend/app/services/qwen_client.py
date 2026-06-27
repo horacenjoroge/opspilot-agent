@@ -31,7 +31,7 @@ class QwenClient:
         api_key: str,
         model: str,
         base_url: str,
-        timeout_seconds: float = 20.0,
+        timeout_seconds: float = 60.0,
         max_retries: int = 2,
         transport: httpx.AsyncBaseTransport | None = None,
     ) -> None:

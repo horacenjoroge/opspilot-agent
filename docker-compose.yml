@@ -7,7 +7,9 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - db_data:/app
+      - db_data:/data
+    environment:
+      - DATABASE_URL=sqlite:////data/opspilot.db
 
 volumes:
   db_data:
