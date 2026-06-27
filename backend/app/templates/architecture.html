@@ -1,66 +1,206 @@
 {% extends "base.html" %}
 {% block title %}OpsPilot Architecture{% endblock %}
 {% block content %}
+
 <section class="hero compact">
   <div>
-    <p class="eyebrow">System Explainer</p>
-    <h2>Why OpsPilot is an agent, not a chatbot</h2>
-    <p class="lede">OpsPilot is a backend-controlled incident workflow. Qwen proposes structured decisions, but the backend validates tools, stores evidence, applies policy, pauses for approval, and records everything in a timeline.</p>
+    <p class="eyebrow">System Architecture</p>
+    <h2>How OpsPilot works</h2>
+    <p class="lede">Qwen proposes. The backend decides. Every step is auditable. Screenshot the diagram below for the Devpost architecture submission.</p>
   </div>
 </section>
 
+<!-- ── Visual architecture diagram ─────────────────────────────────────── -->
+<section class="panel">
+  <div class="panel-header">
+    <h3>Architecture Diagram</h3>
+    <span class="badge">Submission requirement</span>
+  </div>
+
+  <div class="arch-wrap" id="arch-diagram">
+
+    <!-- Legend -->
+    <div class="arch-legend">
+      <span class="arch-leg backend">Backend / Policy</span>
+      <span class="arch-leg ai">Qwen Cloud AI</span>
+      <span class="arch-leg tools">Tools / Storage</span>
+      <span class="arch-leg safe">Safe execution</span>
+      <span class="arch-leg gate">Approval gate</span>
+    </div>
+
+    <!-- Row 1: Input sources -->
+    <p class="arch-layer-lbl">INPUT SOURCES</p>
+    <div class="arch-row">
+      <div class="arch-box client">
+        <b>Browser / Dashboard</b>
+        <small>OpsPilot UI (Jinja2 + Vanilla JS)</small>
+      </div>
+      <div class="arch-box client">
+        <b>Alertmanager</b>
+        <small>POST /api/webhooks/alertmanager</small>
+      </div>
+      <div class="arch-box client">
+        <b>Grafana / Webhook</b>
+        <small>POST /api/webhooks/generic</small>
+      </div>
+      <div class="arch-box client">
+        <b>REST API</b>
+        <small>Programmatic / CLI access</small>
+      </div>
+    </div>
+
+    <div class="arch-arr">↓ X-Webhook-Token (DB-backed per-integration tokens)</div>
+
+    <!-- Row 2: Backend -->
+    <p class="arch-layer-lbl">BACKEND — Alibaba Cloud ECS</p>
+    <div class="arch-box backend fullw">
+      <b>OpsPilot Backend</b>
+      <small>FastAPI · Python 3.12 · Docker · Nginx · SQLAlchemy ORM · Pydantic v2 · Role-based Auth</small>
+    </div>
+
+    <div class="arch-arr">↓</div>
+
+    <!-- Row 3: Main two-column layout -->
+    <div class="arch-cols">
+
+      <!-- LEFT: Agent flow -->
+      <div class="arch-flow">
+
+        <p class="arch-layer-lbl">AI REASONING — Alibaba Cloud Qwen</p>
+        <div class="arch-box ai">
+          <b>Qwen Cloud API &mdash; qwen-plus</b>
+          <small>dashscope-intl · ~4 structured LLM calls per incident run · ~30s each</small>
+        </div>
+
+        <div class="arch-arr">↓ response must be strict JSON — validated by Pydantic before any action</div>
+
+        <p class="arch-layer-lbl">SAFETY LAYER — backend enforced</p>
+        <div class="arch-box backend">
+          <b>Tool Allowlist</b>
+          <small>Model can only recommend tools from an explicit allowlist — backend rejects anything outside it</small>
+        </div>
+
+        <div class="arch-arr">↓ triage phase (investigation tools only)</div>
+
+        <div class="arch-box tools">
+          <b>5 Investigation Tools</b>
+          <small>deployment_tool &middot; health_tool &middot; logs_tool &middot; metrics_tool &middot; runbook_tool</small>
+        </div>
+
+        <div class="arch-arr">↓ evidence collected → Qwen diagnoses → recommends remediation action</div>
+
+        <div class="arch-box backend">
+          <b>Risk Policy Engine</b>
+          <small>Backend classifies the recommended action — independent of the model, cannot be overridden by Qwen</small>
+        </div>
+
+        <div class="arch-arr">↓</div>
+
+        <!-- Branch split -->
+        <div class="arch-split">
+          <div class="arch-branch">
+            <div class="arch-branch-lbl">safe / medium risk</div>
+            <div class="arch-box safe">
+              <b>Execute Immediately</b>
+              <small>Backend runs the action, result stored in timeline</small>
+            </div>
+          </div>
+          <div class="arch-branch">
+            <div class="arch-branch-lbl">dangerous</div>
+            <div class="arch-box gate">
+              <b>Approval Gate</b>
+              <small>Agent pauses — incident status → waiting_for_approval</small>
+            </div>
+            <div class="arch-arr">↓ human approves on Approvals board or REST API</div>
+            <div class="arch-box tools">
+              <b>4 Remediation Tools</b>
+              <small>restart_service &middot; rollback_deployment &middot; clear_queue &middot; disable_feature_flag</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="arch-arr">↓</div>
+
+        <div class="arch-box backend">
+          <b>Final Report + Incident Memory</b>
+          <small>Qwen writes a structured final report · key diagnosis saved to memory for future incidents</small>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: Persistence -->
+      <div class="arch-data-col">
+        <p class="arch-layer-lbl">PERSISTENCE — Alibaba Cloud RDS</p>
+        <div class="arch-box tools tall">
+          <b>Alibaba Cloud RDS</b>
+          <small>(SQLite in local dev / Docker)</small>
+          <ul class="arch-data-list">
+            <li>Incidents</li>
+            <li>Agent Steps</li>
+            <li>Timeline &amp; Audit Log</li>
+            <li>Approvals</li>
+            <li>Incident Memory</li>
+            <li>Webhook Tokens</li>
+            <li>Users &amp; Roles</li>
+            <li>Evaluation Results</li>
+          </ul>
+        </div>
+        <div class="arch-arr">↕ read/write throughout all agent phases</div>
+
+        <p class="arch-layer-lbl" style="margin-top:16px;">QWEN CALL SEQUENCE</p>
+        <div class="arch-box ai seq-box">
+          <div class="seq-item"><span class="seq-n">1</span><span>Triage — classify severity, pick investigation tools</span></div>
+          <div class="seq-item"><span class="seq-n">2</span><span>Evidence — run tools, collect results</span></div>
+          <div class="seq-item"><span class="seq-n">3</span><span>Diagnosis + remediation recommendation</span></div>
+          <div class="seq-item"><span class="seq-n">4</span><span>Final report + memory extraction</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── Explainer panels ─────────────────────────────────────────────────── -->
 <section class="detail-grid">
   <article class="panel">
     <h3>What OpsPilot Does</h3>
-    <p>OpsPilot helps engineers triage incidents, inspect evidence, recommend safe remediation, and preserve reusable incident memory without letting the LLM directly control infrastructure.</p>
+    <p>OpsPilot helps engineers triage incidents, inspect evidence, recommend safe remediation, and preserve reusable incident memory — without letting the LLM directly control infrastructure. The model reasons; the backend enforces every constraint.</p>
   </article>
   <article class="panel">
-    <h3>Qwen's Role</h3>
-    <p>Qwen is used for triage, tool planning, diagnosis, remediation recommendation, and final report generation. Every response must be strict JSON before the backend uses it.</p>
+    <h3>Qwen Cloud's Role</h3>
+    <p>Qwen is used for triage classification, tool planning, diagnosis, remediation recommendation, and final report generation. Every response must be strict JSON before the backend uses it. Qwen never executes anything directly.</p>
   </article>
-</section>
-
-<section class="panel">
-  <h3>Agent Workflow</h3>
-  <ol class="plain-list numbered">
-    {% for step in workflow_steps %}
-    <li>{{ step }}</li>
-    {% endfor %}
-  </ol>
 </section>
 
 <section class="detail-grid">
   <article class="panel">
     <h3>Tool System</h3>
-    <p>The model never executes infrastructure actions directly. It can only recommend allowlisted tools. The backend validates the names, runs the tools, and stores the outputs in the timeline.</p>
+    <p>The model never executes infrastructure actions directly. It recommends allowlisted tool names. The backend validates the names against the allowlist, runs the tools in sequence, and stores every output in the timeline as auditable evidence.</p>
+    <p class="section-note">Triage phase is restricted to investigation tools only — remediation tools cannot be called during evidence collection.</p>
   </article>
   <article class="panel">
     <h3>Approval Gate</h3>
-    <p>The backend risk policy, not the model, decides whether an action is safe, medium, or dangerous. Dangerous actions always create an approval request before any remediation can proceed.</p>
+    <p>The backend risk policy — not the model — decides whether an action is safe, medium, or dangerous. Dangerous actions always create an approval request and halt execution. The model cannot bypass this gate regardless of its reasoning.</p>
+    <p class="section-note">Approvals can be actioned from the UI, the REST API, or programmatically — enabling integration with Slack bots or runbook automation.</p>
   </article>
 </section>
 
 <section class="detail-grid">
   <article class="panel">
     <h3>Evaluation Harness</h3>
-    <p>OpsPilot includes seeded evaluation scenarios that run through the same backend workflow and return PASS or FAIL results so teams can inspect repeatability quickly.</p>
+    <p>OpsPilot includes seeded evaluation scenarios that run through the same backend workflow and return PASS or FAIL on expected severity classification, tool usage, and final incident status — so judges can verify repeatability without manual steps.</p>
   </article>
   <article class="panel">
-    <h3>What Is Simulated</h3>
+    <h3>What Is Simulated vs Production-Shaped</h3>
     <ul class="plain-list">
       {% for item in simulated_components %}
-      <li>{{ item }}</li>
+      <li><strong>Simulated:</strong> {{ item }}</li>
+      {% endfor %}
+      {% for item in production_shaped_components %}
+      <li><strong>Production:</strong> {{ item }}</li>
       {% endfor %}
     </ul>
   </article>
 </section>
 
-<section class="panel">
-  <h3>What Is Production-Shaped</h3>
-  <ul class="plain-list">
-    {% for item in production_shaped_components %}
-    <li>{{ item }}</li>
-    {% endfor %}
-  </ul>
-</section>
 {% endblock %}

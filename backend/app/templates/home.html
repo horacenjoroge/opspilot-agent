@@ -1,16 +1,64 @@
 {% extends "base.html" %}
 {% block title %}OpsPilot Overview{% endblock %}
 {% block content %}
+
 <section class="hero">
   <div>
-    <p class="eyebrow">Qwen Cloud Hackathon · Track 4</p>
+    <p class="eyebrow">Qwen Cloud Hackathon · Track 4 · Autopilot Agent</p>
     <h2>The model reasons. The backend enforces.</h2>
-    <p class="lede">OpsPilot connects Qwen to real infrastructure tools — but every tool call is allowlisted by the backend, every risky action is blocked until a human approves, and every reasoning step is stored as auditable evidence.</p>
+    <p class="lede">OpsPilot connects Qwen to real SRE workflows — every tool call is allowlisted by the backend, every risky action is blocked until a human approves, and every reasoning step is stored as auditable evidence.</p>
   </div>
   <div class="hero-actions">
     <a class="button primary" href="/demo">Run a demo scenario</a>
     <a class="button secondary" href="/architecture">View architecture</a>
   </div>
+</section>
+
+<!-- Judge / user quick start -->
+<section class="quickstart-guide">
+  <p class="quickstart-title">Start here — complete flow in 5 steps</p>
+  <div class="quickstart-steps">
+    <a class="qs-step" href="/demo">
+      <span class="qs-num">1</span>
+      <div>
+        <strong>Demo</strong>
+        <span>Pick a scenario and create an incident</span>
+      </div>
+    </a>
+    <span class="qs-sep">→</span>
+    <a class="qs-step" href="/incidents">
+      <span class="qs-num">2</span>
+      <div>
+        <strong>Run Agent</strong>
+        <span>Open the incident and click Run Agent</span>
+      </div>
+    </a>
+    <span class="qs-sep">→</span>
+    <a class="qs-step" href="/incidents">
+      <span class="qs-num">3</span>
+      <div>
+        <strong>Timeline</strong>
+        <span>See Qwen's triage, evidence, and diagnosis</span>
+      </div>
+    </a>
+    <span class="qs-sep">→</span>
+    <a class="qs-step" href="/approvals">
+      <span class="qs-num">4</span>
+      <div>
+        <strong>Approvals</strong>
+        <span>Approve or reject the blocked risky action</span>
+      </div>
+    </a>
+    <span class="qs-sep">→</span>
+    <a class="qs-step" href="/evals">
+      <span class="qs-num">5</span>
+      <div>
+        <strong>Evaluations</strong>
+        <span>Run the full suite and see structured pass/fail</span>
+      </div>
+    </a>
+  </div>
+  <p class="qs-hint">Use <strong>high_api_error_rate</strong> in Demo for the full flow: triage → dangerous action → approval gate.</p>
 </section>
 
 <section class="stats-grid">
@@ -28,6 +76,15 @@
   </article>
 </section>
 
+<section class="panel">
+  <h3>What Makes This Different</h3>
+  <ol class="plain-list numbered">
+    {% for step in recommended_flow %}
+    <li>{{ step }}</li>
+    {% endfor %}
+  </ol>
+</section>
+
 <section class="detail-grid">
   <article class="panel">
     <h3>Demo Walkthrough</h3>
@@ -38,24 +95,34 @@
     </ol>
   </article>
   <article class="panel">
-    <h3>Quick Links</h3>
-    <div class="action-grid">
-      <a class="button primary" href="/demo">Launch incident scenario</a>
-      <a class="button ghost" href="/incidents">View incidents</a>
-      <a class="button ghost" href="/approvals">View approvals</a>
-      <a class="button ghost" href="/evals">Run evaluations</a>
-      <a class="button ghost" href="/architecture">View architecture</a>
+    <h3>Navigation Guide</h3>
+    <div class="nav-guide-grid">
+      <div class="nav-guide-item">
+        <a href="/demo"><strong>Demo</strong></a>
+        <p>Create seeded incident scenarios — start here to test the agent.</p>
+      </div>
+      <div class="nav-guide-item">
+        <a href="/incidents"><strong>Incidents</strong></a>
+        <p>Full incident list. Open any incident to view the agent timeline.</p>
+      </div>
+      <div class="nav-guide-item">
+        <a href="/approvals"><strong>Approvals</strong></a>
+        <p>Approve or reject dangerous actions the agent wants to execute.</p>
+      </div>
+      <div class="nav-guide-item">
+        <a href="/evals"><strong>Evaluations</strong></a>
+        <p>Structured pass/fail checks — replays all scenarios and asserts expected outputs.</p>
+      </div>
+      <div class="nav-guide-item">
+        <a href="/architecture"><strong>Architecture</strong></a>
+        <p>Visual system diagram — how Qwen, the backend, and the approval gate connect.</p>
+      </div>
+      <div class="nav-guide-item">
+        <a href="/integrations"><strong>Integrations</strong></a>
+        <p>Webhook setup — connect Alertmanager, Grafana, or any tool to OpsPilot.</p>
+      </div>
     </div>
   </article>
-</section>
-
-<section class="panel">
-  <h3>What Makes This Different</h3>
-  <ol class="plain-list numbered">
-    {% for step in recommended_flow %}
-    <li>{{ step }}</li>
-    {% endfor %}
-  </ol>
 </section>
 
 <section class="panel">
@@ -63,6 +130,9 @@
     <h3>Recent Incidents</h3>
     <a href="/incidents">View all</a>
   </div>
+  {% if not recent_incidents %}
+  <p class="section-note">No incidents yet. Go to <a href="/demo">Demo</a> to create one.</p>
+  {% else %}
   <div class="table-wrap">
     <table>
       <thead>
@@ -78,16 +148,14 @@
         <tr>
           <td><a href="/incidents/{{ incident.id }}">{{ incident.title }}</a></td>
           <td><span class="badge">{{ incident.severity.value }}</span></td>
-          <td>{{ incident.status.value }}</td>
-          <td>{{ incident.source }}</td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="4">No incidents yet. Start with an incident scenario.</td>
+          <td>{{ incident.status.value | replace("_", " ") }}</td>
+          <td>{{ incident.source | replace("_", " ") }}</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
+  {% endif %}
 </section>
+
 {% endblock %}
