@@ -41,7 +41,7 @@
 </section>
 {% endif %}
 
-{% if incident.status.value == 'waiting_for_approval' and not agent_just_ran %}
+{% if incident.status.value == 'waiting_for_approval' and not agent_just_ran and approval_groups.pending %}
 <section class="callout callout-warning">
   <div>
     <strong>Approval pending</strong>
