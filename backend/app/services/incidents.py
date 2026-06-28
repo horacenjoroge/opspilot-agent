@@ -41,12 +41,14 @@ class IncidentService:
         offset: int = 0,
         status: IncidentStatus | None = None,
         severity: Severity | None = None,
+        source_filter: str | None = None,
     ) -> list[Incident]:
         query = self.db.query(Incident)
         if status is not None:
             query = query.filter(Incident.status == status)
         if severity is not None:
             query = query.filter(Incident.severity == severity)
+        query = self._apply_source_filter(query, source_filter)
         query = query.order_by(Incident.created_at.desc(), Incident.id.desc())
         if offset:
             query = query.offset(offset)
@@ -59,13 +61,30 @@ class IncidentService:
         *,
         status: IncidentStatus | None = None,
         severity: Severity | None = None,
+        source_filter: str | None = None,
     ) -> int:
         query = self.db.query(Incident)
         if status is not None:
             query = query.filter(Incident.status == status)
         if severity is not None:
             query = query.filter(Incident.severity == severity)
+        query = self._apply_source_filter(query, source_filter)
         return query.count()
+
+    def _apply_source_filter(self, query, source_filter: str | None):
+        if source_filter == "demo":
+            return query.filter(Incident.source.like("demo:%"))
+        if source_filter == "alertmanager":
+            return query.filter(Incident.source.like("alertmanager:%"))
+        if source_filter == "grafana":
+            return query.filter(Incident.source.ilike("%grafana%"))
+        if source_filter == "webhook":
+            return query.filter(
+                ~Incident.source.like("demo:%"),
+                ~Incident.source.like("alertmanager:%"),
+                ~Incident.source.ilike("%grafana%"),
+            )
+        return query
 
     def get_incident(self, incident_id: int) -> Incident:
         incident = self.db.get(Incident, incident_id)

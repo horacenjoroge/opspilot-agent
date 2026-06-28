@@ -3,16 +3,48 @@
 {% block content %}
 <section class="panel">
   <div class="panel-header">
-    <div style="display:flex;align-items:center;gap:12px;">
+    <div class="panel-header-with-live">
       <h2 style="margin:0;">Incidents</h2>
-      <span class="live-pill" id="live-pill" title="Auto-refreshes every 30 seconds">
+      <span class="live-pill" id="live-pill">
         <span class="live-dot"></span>Live
       </span>
     </div>
     <a class="button secondary" href="/demo">Create incident scenario</a>
   </div>
-  <p class="section-note">Incidents from demo scenarios, webhooks, and the REST API all appear here. The list refreshes automatically every 30 seconds.</p>
 
+  <!-- Filter bar -->
+  <div class="filter-bar">
+    <select id="filter-status" class="filter-select" title="Filter by status" aria-label="Filter by status">
+      <option value="">All statuses</option>
+      <option value="new">New</option>
+      <option value="triaging">Triaging</option>
+      <option value="waiting_for_approval">Waiting for approval</option>
+      <option value="resolved">Resolved</option>
+      <option value="failed">Failed</option>
+    </select>
+
+    <select id="filter-severity" class="filter-select" title="Filter by severity" aria-label="Filter by severity">
+      <option value="">All severities</option>
+      <option value="critical">Critical</option>
+      <option value="high">High</option>
+      <option value="medium">Medium</option>
+      <option value="low">Low</option>
+    </select>
+
+    <select id="filter-source" class="filter-select" title="Filter by source" aria-label="Filter by source">
+      <option value="">All sources</option>
+      <option value="alertmanager">Alertmanager</option>
+      <option value="grafana">Grafana</option>
+      <option value="webhook">Webhook</option>
+      <option value="demo">Demo</option>
+    </select>
+
+    <span class="filter-count" id="filter-count">
+      Showing {{ incidents | length }} of {{ total_count }}
+    </span>
+  </div>
+
+  <!-- Table -->
   <div class="table-wrap">
     <table>
       <thead>
@@ -50,18 +82,16 @@
           <td>
             {% set s = incident.status.value %}
             {% if s == 'resolved' %}
-              <span class="badge">{{ s }}</span>
+              <span class="badge">resolved</span>
             {% elif s == 'waiting_for_approval' %}
-              <span class="badge src-badge src-alertmanager">approval needed</span>
+              <span class="src-badge src-alertmanager">approval needed</span>
             {% elif s == 'triaging' %}
-              <span class="badge neutral">{{ s }}</span>
+              <span class="badge neutral">triaging</span>
             {% else %}
               <span class="badge neutral">{{ s | replace('_', ' ') }}</span>
             {% endif %}
           </td>
-          <td>
-            <span class="rel-time" data-ts="{{ incident.created_at }}">{{ incident.created_at }}</span>
-          </td>
+          <td><span class="rel-time" data-ts="{{ incident.created_at }}">{{ incident.created_at }}</span></td>
           <td>
             <div class="action-row">
               <a class="button ghost small" href="/incidents/{{ incident.id }}">View</a>
@@ -70,64 +100,69 @@
           </td>
         </tr>
         {% else %}
-        <tr>
-          <td colspan="7" style="text-align:center;color:var(--muted);">No incidents yet — go to <a href="/demo">Demo</a> to create one.</td>
-        </tr>
+        <tr><td colspan="7" class="empty-row">No incidents yet — go to <a href="/demo">Demo</a> to create one.</td></tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
-  <p class="section-note" id="last-refresh-note"></p>
+
+  <!-- Pagination -->
+  <div class="pagination" id="pagination">
+    <button type="button" class="button ghost small" id="page-prev" disabled>← Previous</button>
+    <span class="page-info" id="page-info">Page 1</span>
+    <button type="button" class="button ghost small" id="page-next" {% if total_count <= page_size %}disabled{% endif %}>Next →</button>
+  </div>
+
+  <p class="section-note" id="last-refresh-note">Auto-refreshes every 30 seconds.</p>
 </section>
 
 <script>
 (function () {
+  const PAGE_SIZE = {{ page_size }};
+
+  // ── state ────────────────────────────────────────────────────────────────
+  let state = { status: '', severity: '', source: '', page: 0, total: {{ total_count }} };
+
+  // ── helpers ──────────────────────────────────────────────────────────────
   function escHtml(s) {
-    return String(s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  function fmtRelTime(isoStr) {
-    if (!isoStr) return '—';
-    const d = new Date(isoStr.endsWith('Z') ? isoStr : isoStr + 'Z');
-    const diff = Math.floor((Date.now() - d.getTime()) / 1000);
-    if (diff < 60) return `${diff}s ago`;
-    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  function fmtRelTime(iso) {
+    if (!iso) return '—';
+    const d = new Date(iso.endsWith('Z') ? iso : iso + 'Z');
+    const s = Math.floor((Date.now() - d) / 1000);
+    if (s < 60) return `${s}s ago`;
+    if (s < 3600) return `${Math.floor(s/60)}m ago`;
+    if (s < 86400) return `${Math.floor(s/3600)}h ago`;
     return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   }
 
-  function renderSourceBadge(source) {
-    if (!source) return '<span class="src-badge src-webhook">unknown</span>';
-    if (source.startsWith('demo:')) {
-      const label = source.slice(5).replace(/_/g, ' ');
-      return `<span class="src-badge src-demo">Demo</span> <span class="source-label">${escHtml(label)}</span>`;
-    }
-    if (source.startsWith('alertmanager:')) {
-      const svc = source.slice(13);
-      return `<span class="src-badge src-alertmanager">Alertmanager</span> <span class="source-label">${escHtml(svc)}</span>`;
-    }
-    if (source.toLowerCase().includes('grafana')) {
+  function srcBadge(src) {
+    if (!src) return '<span class="src-badge src-webhook">unknown</span>';
+    if (src.startsWith('demo:'))
+      return `<span class="src-badge src-demo">Demo</span> <span class="source-label">${escHtml(src.slice(5).replace(/_/g,' '))}</span>`;
+    if (src.startsWith('alertmanager:'))
+      return `<span class="src-badge src-alertmanager">Alertmanager</span> <span class="source-label">${escHtml(src.slice(13))}</span>`;
+    if (src.toLowerCase().includes('grafana'))
       return `<span class="src-badge src-grafana">Grafana</span>`;
-    }
-    return `<span class="src-badge src-webhook">Webhook</span> <span class="source-label">${escHtml(source)}</span>`;
+    return `<span class="src-badge src-webhook">Webhook</span> <span class="source-label">${escHtml(src)}</span>`;
   }
 
-  function renderStatusBadge(status) {
-    if (status === 'resolved') return `<span class="badge">${status}</span>`;
-    if (status === 'waiting_for_approval') return `<span class="badge src-badge src-alertmanager">approval needed</span>`;
+  function statusBadge(status) {
+    if (status === 'resolved') return `<span class="badge">resolved</span>`;
+    if (status === 'waiting_for_approval') return `<span class="src-badge src-alertmanager">approval needed</span>`;
     if (status === 'triaging') return `<span class="badge neutral">triaging</span>`;
-    return `<span class="badge neutral">${status.replace(/_/g, ' ')}</span>`;
+    return `<span class="badge neutral">${status.replace(/_/g,' ')}</span>`;
   }
 
   function renderRow(inc) {
     return `<tr>
       <td>#${inc.id}</td>
       <td><a href="/incidents/${inc.id}">${escHtml(inc.title)}</a></td>
-      <td>${renderSourceBadge(inc.source)}</td>
+      <td>${srcBadge(inc.source)}</td>
       <td><span class="badge">${escHtml(inc.severity)}</span></td>
-      <td>${renderStatusBadge(inc.status)}</td>
+      <td>${statusBadge(inc.status)}</td>
       <td><span class="rel-time" data-ts="${escHtml(inc.created_at)}">${fmtRelTime(inc.created_at)}</span></td>
       <td>
         <div class="action-row">
@@ -138,28 +173,75 @@
     </tr>`;
   }
 
-  // Format timestamps on initial load
+  // ── UI updates ────────────────────────────────────────────────────────────
+  function updatePagination() {
+    const from = state.page * PAGE_SIZE + 1;
+    const to   = Math.min((state.page + 1) * PAGE_SIZE, state.total);
+    const pages = Math.max(1, Math.ceil(state.total / PAGE_SIZE));
+    document.getElementById('page-info').textContent =
+      state.total === 0 ? 'No results' : `Page ${state.page + 1} of ${pages} · ${from}–${to} of ${state.total}`;
+    document.getElementById('page-prev').disabled = state.page === 0;
+    document.getElementById('page-next').disabled = (state.page + 1) * PAGE_SIZE >= state.total;
+    document.getElementById('filter-count').textContent =
+      `Showing ${to - from + 1 || 0} of ${state.total}`;
+  }
+
+  // ── fetch & render ────────────────────────────────────────────────────────
+  async function fetchAndRender(isRefresh = false) {
+    const params = new URLSearchParams({ limit: PAGE_SIZE, offset: state.page * PAGE_SIZE, include_meta: true });
+    if (state.status)   params.set('status',   state.status);
+    if (state.severity) params.set('severity', state.severity);
+    if (state.source)   params.set('source',   state.source);
+
+    try {
+      const res = await fetch(`/api/incidents?${params}`);
+      if (!res.ok) return;
+      const data = await res.json();
+
+      // API returns list or {items, meta} depending on include_meta
+      const incidents = data.items ?? data;
+      const total     = data.meta?.total ?? incidents.length;
+      state.total = total;
+
+      const tbody = document.getElementById('incident-tbody');
+      tbody.innerHTML = incidents.length
+        ? incidents.map(renderRow).join('')
+        : `<tr><td colspan="7" class="empty-row">No incidents match the current filters.</td></tr>`;
+
+      updatePagination();
+
+      if (isRefresh) {
+        const note = document.getElementById('last-refresh-note');
+        if (note) note.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+      }
+    } catch (_) {}
+  }
+
+  // ── filters ───────────────────────────────────────────────────────────────
+  function onFilterChange() {
+    state.status   = document.getElementById('filter-status').value;
+    state.severity = document.getElementById('filter-severity').value;
+    state.source   = document.getElementById('filter-source').value;
+    state.page     = 0;
+    fetchAndRender();
+  }
+
+  ['filter-status','filter-severity','filter-source'].forEach(id =>
+    document.getElementById(id).addEventListener('change', onFilterChange)
+  );
+
+  document.getElementById('page-prev').addEventListener('click', () => { state.page--; fetchAndRender(); });
+  document.getElementById('page-next').addEventListener('click', () => { state.page++; fetchAndRender(); });
+
+  // ── format initial timestamps ─────────────────────────────────────────────
   document.querySelectorAll('.rel-time[data-ts]').forEach(el => {
     el.textContent = fmtRelTime(el.dataset.ts);
   });
 
-  // Auto-refresh every 30 seconds
-  const tbody = document.getElementById('incident-tbody');
-  const note = document.getElementById('last-refresh-note');
+  updatePagination();
 
-  async function refresh() {
-    try {
-      const res = await fetch('/api/incidents');
-      if (!res.ok) return;
-      const incidents = await res.json();
-      tbody.innerHTML = incidents.length
-        ? incidents.map(renderRow).join('')
-        : '<tr><td colspan="7" style="text-align:center;color:var(--muted);">No incidents yet.</td></tr>';
-      if (note) note.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
-    } catch (_) {}
-  }
-
-  setInterval(refresh, 30000);
+  // ── auto-refresh every 30s ────────────────────────────────────────────────
+  setInterval(() => fetchAndRender(true), 30000);
 })();
 </script>
 {% endblock %}

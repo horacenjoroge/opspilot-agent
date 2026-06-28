@@ -46,10 +46,11 @@ async def create_incident(
 )
 async def list_incidents(
     db: Session = Depends(get_db_session),
-    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
     offset: Annotated[int, Query(ge=0)] = 0,
     status_filter: IncidentStatus | None = Query(default=None, alias="status"),
     severity: Severity | None = None,
+    source: str | None = Query(default=None, description="Source type filter: demo, alertmanager, grafana, webhook"),
     include_meta: bool = False,
     _: object = Depends(require_roles(*READ_ROLES)),
 ) -> list[IncidentRead] | IncidentListResponse:
@@ -59,6 +60,7 @@ async def list_incidents(
         offset=offset,
         status=status_filter,
         severity=severity,
+        source_filter=source,
     )
     items = [IncidentRead.model_validate(incident) for incident in incidents]
     if not include_meta:
@@ -66,7 +68,7 @@ async def list_incidents(
     return IncidentListResponse(
         items=items,
         meta={
-            "total": service.count_incidents(status=status_filter, severity=severity),
+            "total": service.count_incidents(status=status_filter, severity=severity, source_filter=source),
             "limit": limit,
             "offset": offset,
         },

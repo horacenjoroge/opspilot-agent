@@ -162,13 +162,17 @@ async def dashboard_incidents(request: Request, db: Session = Depends(get_db_ses
     redirect = _require_dashboard_access(request, db)
     if redirect is not None:
         return redirect
-    incidents = IncidentService(db).list_incidents()
+    service = IncidentService(db)
+    incidents = service.list_incidents(limit=20, offset=0)
+    total = service.count_incidents()
     return templates.TemplateResponse(
         request,
         "incidents.html",
         {
             **_dashboard_context(request, db),
             "incidents": incidents,
+            "total_count": total,
+            "page_size": 20,
         },
     )
 
