@@ -166,6 +166,30 @@ class ApprovalService:
                 status=ToolStatus.success,
             )
         )
+        rejection_summary = (
+            f"Remediation '{approval_request.action_name}' was rejected by {approved_by}. "
+            "Incident closed without automated remediation — manual follow-up may be required."
+        )
+        self.incident_service.update_incident_fields(
+            approval_request.incident_id,
+            status=IncidentStatus.resolved,
+            final_report=rejection_summary,
+        )
+        self.agent_step_service.create_step(
+            AgentStepCreate(
+                incident_id=approval_request.incident_id,
+                step_number=self.agent_step_service.next_step_number(approval_request.incident_id),
+                type="final_report",
+                output_json={
+                    "summary": rejection_summary,
+                    "incident_status": IncidentStatus.resolved.value,
+                    "actions_taken": ["rejection"],
+                    "follow_up_items": ["Manual remediation may be required — the automated action was not executed."],
+                },
+                model_summary=rejection_summary,
+                status=ToolStatus.success,
+            )
+        )
         self.db.commit()
         self.db.refresh(approval_request)
         return approval_request
