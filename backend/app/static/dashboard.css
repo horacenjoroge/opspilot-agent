@@ -430,6 +430,55 @@ pre {
   background: var(--accent-strong);
 }
 
+/* ── Source badges (incident list) ─────────────────────────────────────── */
+.src-badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.src-badge.src-alertmanager { background: #fde8e3; color: #a43b1f; }
+.src-badge.src-grafana       { background: #fff0e0; color: #b06f1f; }
+.src-badge.src-webhook       { background: #e0ebf8; color: #1a4077; }
+.src-badge.src-demo          { background: #e8e2d8; color: var(--muted); }
+.source-label { font-size: 0.8rem; color: var(--muted); }
+
+/* ── Live pill ──────────────────────────────────────────────────────────── */
+.live-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #d6ede8;
+  color: #0a4f44;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.7); }
+}
+.live-dot {
+  width: 7px;
+  height: 7px;
+  background: #0f6c5c;
+  border-radius: 50%;
+  animation: live-pulse 1.4s ease-in-out infinite;
+}
+
+/* panel-header with live pill flex alignment */
+.panel-header-with-live {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 /* ── Quickstart guide (home page) ───────────────────────────────────────── */
 .quickstart-guide {
   background: #d6ede8;

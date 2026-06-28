@@ -3,31 +3,65 @@
 {% block content %}
 <section class="panel">
   <div class="panel-header">
-    <div>
-      <p class="eyebrow">Incident API</p>
-      <h2>Incident List</h2>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <h2 style="margin:0;">Incidents</h2>
+      <span class="live-pill" id="live-pill" title="Auto-refreshes every 30 seconds">
+        <span class="live-dot"></span>Live
+      </span>
     </div>
     <a class="button secondary" href="/demo">Create incident scenario</a>
   </div>
-  <p class="section-note">Use this page to jump into seeded incidents after they are created. The incident detail page is where the full agent workflow becomes visible.</p>
+  <p class="section-note">Incidents from demo scenarios, webhooks, and the REST API all appear here. The list refreshes automatically every 30 seconds.</p>
+
   <div class="table-wrap">
     <table>
       <thead>
         <tr>
           <th>ID</th>
           <th>Title</th>
-          <th>Status</th>
+          <th>Source</th>
           <th>Severity</th>
+          <th>Status</th>
+          <th>Created</th>
           <th>Action</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="incident-tbody">
         {% for incident in incidents %}
         <tr>
           <td>#{{ incident.id }}</td>
           <td><a href="/incidents/{{ incident.id }}">{{ incident.title }}</a></td>
-          <td>{{ incident.status.value }}</td>
+          <td>
+            {% set src = incident.source %}
+            {% if src.startswith('demo:') %}
+              <span class="src-badge src-demo">Demo</span>
+              <span class="source-label">{{ src[5:] | replace('_', ' ') }}</span>
+            {% elif src.startswith('alertmanager:') %}
+              <span class="src-badge src-alertmanager">Alertmanager</span>
+              <span class="source-label">{{ src[13:] }}</span>
+            {% elif 'grafana' in src %}
+              <span class="src-badge src-grafana">Grafana</span>
+            {% else %}
+              <span class="src-badge src-webhook">Webhook</span>
+              <span class="source-label">{{ src }}</span>
+            {% endif %}
+          </td>
           <td><span class="badge">{{ incident.severity.value }}</span></td>
+          <td>
+            {% set s = incident.status.value %}
+            {% if s == 'resolved' %}
+              <span class="badge">{{ s }}</span>
+            {% elif s == 'waiting_for_approval' %}
+              <span class="badge src-badge src-alertmanager">approval needed</span>
+            {% elif s == 'triaging' %}
+              <span class="badge neutral">{{ s }}</span>
+            {% else %}
+              <span class="badge neutral">{{ s | replace('_', ' ') }}</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="rel-time" data-ts="{{ incident.created_at }}">{{ incident.created_at }}</span>
+          </td>
           <td>
             <div class="action-row">
               <a class="button ghost small" href="/incidents/{{ incident.id }}">View</a>
@@ -37,11 +71,95 @@
         </tr>
         {% else %}
         <tr>
-          <td colspan="5">No incidents available yet.</td>
+          <td colspan="7" style="text-align:center;color:var(--muted);">No incidents yet — go to <a href="/demo">Demo</a> to create one.</td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
+  <p class="section-note" id="last-refresh-note"></p>
 </section>
+
+<script>
+(function () {
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function fmtRelTime(isoStr) {
+    if (!isoStr) return '—';
+    const d = new Date(isoStr.endsWith('Z') ? isoStr : isoStr + 'Z');
+    const diff = Math.floor((Date.now() - d.getTime()) / 1000);
+    if (diff < 60) return `${diff}s ago`;
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+
+  function renderSourceBadge(source) {
+    if (!source) return '<span class="src-badge src-webhook">unknown</span>';
+    if (source.startsWith('demo:')) {
+      const label = source.slice(5).replace(/_/g, ' ');
+      return `<span class="src-badge src-demo">Demo</span> <span class="source-label">${escHtml(label)}</span>`;
+    }
+    if (source.startsWith('alertmanager:')) {
+      const svc = source.slice(13);
+      return `<span class="src-badge src-alertmanager">Alertmanager</span> <span class="source-label">${escHtml(svc)}</span>`;
+    }
+    if (source.toLowerCase().includes('grafana')) {
+      return `<span class="src-badge src-grafana">Grafana</span>`;
+    }
+    return `<span class="src-badge src-webhook">Webhook</span> <span class="source-label">${escHtml(source)}</span>`;
+  }
+
+  function renderStatusBadge(status) {
+    if (status === 'resolved') return `<span class="badge">${status}</span>`;
+    if (status === 'waiting_for_approval') return `<span class="badge src-badge src-alertmanager">approval needed</span>`;
+    if (status === 'triaging') return `<span class="badge neutral">triaging</span>`;
+    return `<span class="badge neutral">${status.replace(/_/g, ' ')}</span>`;
+  }
+
+  function renderRow(inc) {
+    return `<tr>
+      <td>#${inc.id}</td>
+      <td><a href="/incidents/${inc.id}">${escHtml(inc.title)}</a></td>
+      <td>${renderSourceBadge(inc.source)}</td>
+      <td><span class="badge">${escHtml(inc.severity)}</span></td>
+      <td>${renderStatusBadge(inc.status)}</td>
+      <td><span class="rel-time" data-ts="${escHtml(inc.created_at)}">${fmtRelTime(inc.created_at)}</span></td>
+      <td>
+        <div class="action-row">
+          <a class="button ghost small" href="/incidents/${inc.id}">View</a>
+          <button class="button primary small" data-run-agent="${inc.id}">Run Agent</button>
+        </div>
+      </td>
+    </tr>`;
+  }
+
+  // Format timestamps on initial load
+  document.querySelectorAll('.rel-time[data-ts]').forEach(el => {
+    el.textContent = fmtRelTime(el.dataset.ts);
+  });
+
+  // Auto-refresh every 30 seconds
+  const tbody = document.getElementById('incident-tbody');
+  const note = document.getElementById('last-refresh-note');
+
+  async function refresh() {
+    try {
+      const res = await fetch('/api/incidents');
+      if (!res.ok) return;
+      const incidents = await res.json();
+      tbody.innerHTML = incidents.length
+        ? incidents.map(renderRow).join('')
+        : '<tr><td colspan="7" style="text-align:center;color:var(--muted);">No incidents yet.</td></tr>';
+      if (note) note.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+    } catch (_) {}
+  }
+
+  setInterval(refresh, 30000);
+})();
+</script>
 {% endblock %}
