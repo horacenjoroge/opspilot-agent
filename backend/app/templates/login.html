@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>OpsPilot Login</title>
+    <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
     <link rel="stylesheet" href="/static/dashboard.css" />
   </head>
   <body class="login-body">
@@ -13,18 +14,18 @@
         <h1>Dashboard Login</h1>
         {% if auth_enabled %}
         <p class="section-copy">
-          Sign in with a seeded user account to access protected API routes and the dashboard when auth is enabled.
+          Use the default admin credentials below to sign in.
         </p>
         <div id="app-banner" class="app-banner hidden" role="status" aria-live="polite"></div>
         <form id="login-form" class="login-form" data-next-path="{{ next_path or '/' }}">
           <label>
             <span>Email</span>
-            <input type="email" name="email" placeholder="admin@opspilot.local" required />
+            <input type="email" name="email" value="admin@opspilot.local" required />
           </label>
           <label>
             <span>Password</span>
             <div class="password-input">
-              <input type="password" name="password" placeholder="change-me-now" required />
+              <input type="password" name="password" placeholder="admin1234" required />
               <button type="button" class="password-toggle" data-password-toggle aria-label="Show password">
                 Show
               </button>
@@ -33,12 +34,7 @@
           <button type="submit" class="primary-button" data-login-submit>Login</button>
         </form>
         <p class="tiny-copy">
-          Local setup tip: seed a dev admin with
-          <code>python -m app.scripts.seed_admin --email admin@opspilot.local --password change-me-now</code>
-        </p>
-        <p class="tiny-copy">
-          Docker tip: the container uses its own SQLite file, so seed inside Docker with
-          <code>docker compose exec backend python -m app.scripts.seed_admin --email admin@opspilot.local --password change-me-now</code>
+          Default credentials: <code>admin@opspilot.local</code> / <code>admin1234</code>
         </p>
         {% else %}
         <p class="section-copy">
