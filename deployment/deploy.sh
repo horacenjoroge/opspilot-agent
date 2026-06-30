@@ -29,7 +29,7 @@ fi
 
 echo "==> Cloning repo..."
 if [ -d "$APP_DIR" ]; then
-  cd "$APP_DIR" && git pull
+  cd "$APP_DIR" && git pull origin main
 else
   git clone "$REPO_URL" "$APP_DIR"
   cd "$APP_DIR"

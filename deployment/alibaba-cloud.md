@@ -17,8 +17,8 @@ Relevant files:
 
 ## Public Backend URL
 
-Placeholder:
-- `TODO: add public ECS URL`
+Public URL:
+- `http://47.251.48.40`
 
 ## Health Endpoint
 
