@@ -8,20 +8,24 @@ set -euo pipefail
 REPO_URL="https://github.com/horacenjoroge/opspilot-agent.git"
 APP_DIR="/opt/opspilot"
 
-echo "==> Installing Docker..."
-apt-get update -qq
-apt-get install -y -qq ca-certificates curl gnupg
-install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
-chmod a+r /etc/apt/keyrings/docker.gpg
-echo \
-  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
-  https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
-  > /etc/apt/sources.list.d/docker.list
-apt-get update -qq
-apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin
-systemctl enable docker
-systemctl start docker
+if command -v docker &> /dev/null; then
+  echo "==> Docker already installed, skipping."
+else
+  echo "==> Installing Docker..."
+  apt-get update -qq
+  apt-get install -y -qq ca-certificates curl gnupg
+  install -m 0755 -d /etc/apt/keyrings
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  chmod a+r /etc/apt/keyrings/docker.gpg
+  echo \
+    "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+    https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo "$VERSION_CODENAME") stable" \
+    > /etc/apt/sources.list.d/docker.list
+  apt-get update -qq
+  apt-get install -y -qq docker-ce docker-ce-cli containerd.io docker-compose-plugin
+  systemctl enable docker
+  systemctl start docker
+fi
 
 echo "==> Cloning repo..."
 if [ -d "$APP_DIR" ]; then
@@ -45,7 +49,25 @@ echo "==> Building and starting containers..."
 cd "$APP_DIR"
 docker compose -f deployment/docker-compose.prod.yml up --build -d
 
+echo "==> Waiting for backend to be ready..."
+for i in $(seq 1 20); do
+  if docker compose -f deployment/docker-compose.prod.yml exec -T backend curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+    echo "    Backend is up."
+    break
+  fi
+  sleep 2
+done
+
+echo "==> Seeding admin user..."
+docker compose -f deployment/docker-compose.prod.yml exec -T backend \
+  python -m app.scripts.seed_admin \
+  --email admin@opspilot.local \
+  --password admin1234 \
+  --name "OpsPilot Admin"
+
+PUBLIC_IP=$(curl -sf ifconfig.me || echo "<your-ECS-IP>")
 echo ""
 echo "==> Done. OpsPilot is running."
 echo "    Health check: curl http://localhost/health"
-echo "    Dashboard:    http://$(curl -s ifconfig.me)/"
+echo "    Dashboard:    http://${PUBLIC_IP}/"
+echo "    Login:        admin@opspilot.local / admin1234"
