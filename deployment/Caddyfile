@@ -1,0 +1,18 @@
+{
+	email horacenjorge@gmail.com
+}
+
+# HTTPS site — Caddy obtains and renews the Let's Encrypt certificate automatically.
+https://{$SITE_DOMAIN} {
+	reverse_proxy backend:8000
+}
+
+# Redirect plain-http requests for the domain to HTTPS.
+http://{$SITE_DOMAIN} {
+	redir https://{$SITE_DOMAIN}{uri} permanent
+}
+
+# Keep raw-IP / localhost HTTP access working (health checks, direct IP visits).
+http:// {
+	reverse_proxy backend:8000
+}

@@ -278,7 +278,7 @@ The skipped test is the optional live Qwen smoke test when `QWEN_API_KEY` is not
 
 - local development stack: `docker-compose.yml`
 - production-shaped stack: `deployment/docker-compose.prod.yml`
-- reverse proxy config: `deployment/nginx.conf`
+- reverse proxy with automatic HTTPS: `deployment/Caddyfile`
 - target hosting shape: Alibaba Cloud ECS
 
 See:
@@ -287,7 +287,11 @@ See:
 
 ## Alibaba Cloud Proof
 
-The repository includes production-oriented deployment artifacts and a proof template, but a live public ECS proof URL still needs to be captured for final submission.
+Live deployment on Alibaba Cloud ECS (US Silicon Valley):
+
+- Dashboard: https://47.77.178.251.sslip.io/
+- Health: https://47.77.178.251.sslip.io/health
+- API docs: https://47.77.178.251.sslip.io/docs
 
 See [deployment/alibaba-cloud.md](deployment/alibaba-cloud.md).
 

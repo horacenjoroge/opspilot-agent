@@ -8,17 +8,17 @@ Target service:
 ## Backend Deployment Shape
 
 - FastAPI backend
-- optional Nginx reverse proxy
+- Caddy reverse proxy with automatic HTTPS (Let's Encrypt)
 - Docker Compose production-shaped deployment artifact
 
 Relevant files:
 - [deployment/docker-compose.prod.yml](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/deployment/docker-compose.prod.yml:1)
-- [deployment/nginx.conf](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/deployment/nginx.conf:1)
+- [deployment/Caddyfile](/Users/la/Desktop/Repository/horacenjoroge/opspilot-agent/deployment/Caddyfile:1)
 
 ## Public Backend URL
 
 Public URL:
-- `http://47.251.48.40`
+- `https://47.77.178.251.sslip.io`
 
 ## Health Endpoint
 

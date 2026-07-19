@@ -16,10 +16,10 @@ The hackathon deployment target is Alibaba Cloud ECS. Local development uses Doc
 The production deployment artifacts now exist:
 
 - `deployment/docker-compose.prod.yml`
-- `deployment/nginx.conf`
+- `deployment/Caddyfile` (reverse proxy with automatic HTTPS via Let's Encrypt)
 - `deployment/alibaba-cloud.md`
 
-The remaining live step is to deploy on Alibaba Cloud ECS and fill the proof file with the public URL, screenshots, and instance details.
+The app is deployed on Alibaba Cloud ECS at `https://47.77.178.251.sslip.io/`.
 
 ## Required Environment Variables
 

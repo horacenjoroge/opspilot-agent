@@ -66,8 +66,11 @@ docker compose -f deployment/docker-compose.prod.yml exec -T backend \
   --name "OpsPilot Admin"
 
 PUBLIC_IP=$(curl -sf ifconfig.me || echo "<your-ECS-IP>")
+SITE_DOMAIN="${SITE_DOMAIN:-${PUBLIC_IP}.sslip.io}"
 echo ""
 echo "==> Done. OpsPilot is running."
 echo "    Health check: curl http://localhost/health"
-echo "    Dashboard:    http://${PUBLIC_IP}/"
+echo "    Dashboard:    https://${SITE_DOMAIN}/"
 echo "    Login:        admin@opspilot.local / admin1234"
+echo ""
+echo "    NOTE: HTTPS requires TCP 443 open in the ECS security group."
